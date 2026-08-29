@@ -26,53 +26,17 @@ const LoginPage = () => {
     }
   }
 
-  const quickLogin = async (id: string, pw: string) => {
-    setIdentifier(id)
-    setPassword(pw)
-    setError('')
-    setLoading(true)
-    try {
-      await login(id, pw)
-      navigate('/dashboard')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <div className="max-w-md mx-auto space-y-6">
       <div className="text-center space-y-2">
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <LogIn className="h-6 w-6" />
         </div>
-        <h1 className="text-3xl font-bold">Welcome Back</h1>
-        <p className="text-muted-foreground">Internal — login pakai username & password</p>
+        <h1 className="text-3xl font-bold">Sign In</h1>
+        <p className="text-muted-foreground">LW-link — internal</p>
       </div>
 
       <div className="card p-6 space-y-4">
-        <div className="space-y-2">
-          <p className="text-sm text-center text-muted-foreground">Quick login (dev)</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => quickLogin('rizki', 'rizki123')} className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary hover:bg-primary/20">
-              rizki / rizki123
-            </button>
-            <button onClick={() => quickLogin('admin', 'admin123')} className="rounded-md bg-secondary/10 px-3 py-2 text-sm hover:bg-secondary/20">
-              admin / admin123
-            </button>
-          </div>
-          <p className="text-xs text-center text-muted-foreground">atau pakai email: rizki@example.local / admin@example.local</p>
-        </div>
-
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-muted-foreground">Username + Password</span>
-          </div>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -91,7 +55,7 @@ const LoginPage = () => {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="rizki atau rizki@example.local"
+                placeholder="username atau email"
                 className="input pl-10"
                 required
               />
