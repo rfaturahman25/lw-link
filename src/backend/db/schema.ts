@@ -7,6 +7,7 @@ export const users = sqliteTable('users', {
   username: text('username').notNull().unique(),
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
+  passwordHash: text('password_hash'),
   role: text('role', { enum: ['user', 'admin'] }).notNull().default('user'),
   status: text('status', { enum: ['active', 'disabled'] }).notNull().default('active'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),

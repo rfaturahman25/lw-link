@@ -7,23 +7,28 @@
   
   "routes": [
     {
-      "pattern": "links.example.com/*",
-      "zone_name": "example.com"
+      "pattern": "links.lensawaktu.id/*",
+      "zone_name": "lensawaktu.id"
     }
   ],
+
+  "assets": {
+    "directory": "dist/frontend",
+    "not_found_handling": "single-page-application"
+  },
   
   "vars": {
     "APP_NAME": "LW-link",
     "NODE_ENV": "production",
     "SESSION_SECRET": "@session_secret",
-    "ALLOWED_ORIGINS": "https://links.example.com"
+    "ALLOWED_ORIGINS": "https://links.lensawaktu.id"
   },
   
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "lw-link-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "14fb9c06-9e4f-4501-8a48-8457e9d46851",
       "migrations_dir": "migrations"
     }
   ],

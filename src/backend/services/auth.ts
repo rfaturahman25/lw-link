@@ -1,7 +1,7 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or } from 'drizzle-orm'
 import { createDb } from '../db/client'
 import { users, sessions } from '../db/schema'
-import { hashToken, generateToken } from '../utils/security'
+import { hashToken, generateToken, hashPassword, verifyPassword } from '../utils/security'
 
 export type SessionUser = {
   id: string
@@ -58,6 +58,81 @@ export async function findOrCreateDevUser(db: D1Database, email: string): Promis
     role: isAdmin ? 'admin' : 'user',
     status: 'active',
   }
+}
+
+export async function findUserByIdentifier(db: D1Database, identifier: string): Promise<SessionUser & { passwordHash: string | null } | null> {
+  const drizzle = createDb(db)
+  const isEmail = identifier.includes('@')
+  const col = isEmail ? users.email : users.username
+  // username lookup case-insensitive
+  const rows = isEmail
+    ? await drizzle.select().from(users).where(eq(users.email, identifier.toLowerCase())).limit(1)
+    : await drizzle.select().from(users).where(eq(users.username, identifier.toLowerCase())).limit(1)
+  // fallback: try both if not found (support username as email prefix)
+  let row = rows[0]
+  if (!row && !isEmail) {
+    const alt = await drizzle.select().from(users).where(eq(users.email, identifier.toLowerCase())).limit(1)
+    row = alt[0]
+  }
+  if (!row) return null
+  // also check opposite column for robustness
+  if (!row && isEmail) {
+    const alt2 = await drizzle.select().from(users).where(eq(users.username, identifier.toLowerCase())).limit(1)
+    row = alt2[0]
+  }
+  if (!row) return null
+  return {
+    id: row.id,
+    email: row.email,
+    username: row.username,
+    displayName: row.displayName,
+    avatarUrl: row.avatarUrl,
+    role: row.role as 'user' | 'admin',
+    status: row.status as 'active' | 'disabled',
+    passwordHash: (row as unknown as { passwordHash?: string | null; password_hash?: string | null }).passwordHash ?? (row as unknown as { passwordHash?: string | null; password_hash?: string | null }).password_hash ?? null,
+  } as SessionUser & { passwordHash: string | null }
+}
+
+export async function authenticateUser(db: D1Database, identifier: string, password: string): Promise<SessionUser> {
+  const drizzle = createDb(db)
+  // try drizzle typed
+  const lower = identifier.toLowerCase()
+  let rows = await drizzle.select().from(users).where(or(eq(users.email, lower), eq(users.username, lower))).limit(1)
+  if (rows.length === 0) throw new Error('Invalid credentials')
+  const u = rows[0] as typeof rows[0] & { passwordHash?: string | null }
+  if (u.status === 'disabled') throw new Error('User disabled')
+  const hash = (u as unknown as { passwordHash: string | null }).passwordHash
+  if (!hash) throw new Error('Password not set — contact admin')
+  const ok = await verifyPassword(password, hash)
+  if (!ok) throw new Error('Invalid credentials')
+  return {
+    id: u.id,
+    email: u.email,
+    username: u.username,
+    displayName: u.displayName,
+    avatarUrl: u.avatarUrl,
+    role: u.role as 'user' | 'admin',
+    status: u.status as 'active' | 'disabled',
+  }
+}
+
+export async function createUserWithPassword(
+  db: D1Database,
+  email: string,
+  username: string,
+  displayName: string,
+  password: string,
+  role: 'user' | 'admin' = 'user'
+): Promise<SessionUser> {
+  const drizzle = createDb(db)
+  const id = crypto.randomUUID()
+  const passwordHash = await hashPassword(password)
+  await drizzle.insert(users).values({ id, email: email.toLowerCase(), username: username.toLowerCase(), displayName, passwordHash, role, status: 'active' })
+  try {
+    const { profiles } = await import('../db/schema')
+    await drizzle.insert(profiles).values({ userId: id, published: false })
+  } catch {}
+  return { id, email, username, displayName, avatarUrl: null, role, status: 'active' }
 }
 
 export async function createSession(

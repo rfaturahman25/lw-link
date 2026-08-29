@@ -21,6 +21,15 @@ export async function hashIP(ip: string): Promise<string> {
   return arr.map((b) => b.toString(16).padStart(2, '0')).slice(0, 16).join('')
 }
 
+export async function hashPassword(password: string): Promise<string> {
+  return hashToken(password)
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  const h = await hashPassword(password)
+  return h === hash
+}
+
 export function isSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url)

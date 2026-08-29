@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { Github, Linkedin, Twitter, Globe, Mail, Link as LinkIcon, Instagram, Youtube, Facebook, ExternalLink } from 'lucide-react'
+import { Github, Linkedin, Twitter, Globe, Mail, Link as LinkIcon, Instagram, Youtube, Facebook, ExternalLink, MessageCircle, FileSpreadsheet, FileText, ShoppingBag, Phone, Image as ImageIcon, Video, Music } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { api } from '../../services/api'
 
@@ -13,6 +13,16 @@ const iconMap: Record<string, React.ReactNode> = {
   instagram: <Instagram className="h-5 w-5" />,
   youtube: <Youtube className="h-5 w-5" />,
   facebook: <Facebook className="h-5 w-5" />,
+  whatsapp: <MessageCircle className="h-5 w-5" />,
+  sheet: <FileSpreadsheet className="h-5 w-5" />,
+  file: <FileText className="h-5 w-5" />,
+  shop: <ShoppingBag className="h-5 w-5" />,
+  phone: <Phone className="h-5 w-5" />,
+  image: <ImageIcon className="h-5 w-5" />,
+  video: <Video className="h-5 w-5" />,
+  music: <Music className="h-5 w-5" />,
+  tiktok: <Music className="h-5 w-5" />,
+  link: <LinkIcon className="h-5 w-5" />,
   default: <LinkIcon className="h-5 w-5" />,
 }
 

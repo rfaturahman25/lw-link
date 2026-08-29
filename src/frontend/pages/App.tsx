@@ -1,7 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from '../components/layout/Layout'
 import ProtectedRoute from '../components/ProtectedRoute'
-import HomePage from './HomePage'
 import LoginPage from './auth/LoginPage'
 import DashboardPage from './dashboard/DashboardPage'
 import PublicProfilePage from './public/PublicProfilePage'
@@ -11,9 +10,9 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<HomePage />} />
+        <Route index element={<Navigate to="/login" replace />} />
         <Route path="login" element={<LoginPage />} />
-        <Route path="@:username" element={<PublicProfilePage />} />
+        <Route path=":username" element={<PublicProfilePage />} />
         <Route
           path="dashboard/*"
           element={

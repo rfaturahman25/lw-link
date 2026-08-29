@@ -18,8 +18,8 @@ export function useAuth() {
       .finally(() => setLoading(false))
   }, [])
 
-  const login = async (email: string) => {
-    const res = (await api.login(email)) as { success: boolean; data: { user: User; token: string } }
+  const login = async (identifier: string, password: string) => {
+    const res = (await api.login(identifier, password)) as { success: boolean; data: { user: User; token: string } }
     setSessionToken(res.data.token)
     setUser(res.data.user)
     return res.data.user

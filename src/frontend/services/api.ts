@@ -12,7 +12,8 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<{ succe
 }
 
 export const api = {
-  login: (email: string) => request<{ user: unknown; token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email }) }),
+  login: (identifier: string, password: string) =>
+    request<{ user: unknown; token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ identifier, password, username: identifier, email: identifier }) }),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   session: () => request('/api/auth/session'),
   me: () => request('/api/me'),

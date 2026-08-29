@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, LogIn, AlertCircle } from 'lucide-react'
+import { User, Lock, LogIn, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const LoginPage = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -15,7 +16,7 @@ const LoginPage = () => {
     setError('')
     setLoading(true)
     try {
-      await login(email)
+      await login(identifier.trim(), password)
       navigate('/dashboard')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed'
@@ -25,12 +26,13 @@ const LoginPage = () => {
     }
   }
 
-  const quickLogin = async (addr: string) => {
-    setEmail(addr)
+  const quickLogin = async (id: string, pw: string) => {
+    setIdentifier(id)
+    setPassword(pw)
     setError('')
     setLoading(true)
     try {
-      await login(addr)
+      await login(id, pw)
       navigate('/dashboard')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
@@ -46,20 +48,21 @@ const LoginPage = () => {
           <LogIn className="h-6 w-6" />
         </div>
         <h1 className="text-3xl font-bold">Welcome Back</h1>
-        <p className="text-muted-foreground">Internal platform — use @example.local in dev</p>
+        <p className="text-muted-foreground">Internal — login pakai username & password</p>
       </div>
 
       <div className="card p-6 space-y-4">
         <div className="space-y-2">
-          <p className="text-sm text-center text-muted-foreground">Development quick login</p>
-          <div className="flex gap-2">
-            <button onClick={() => quickLogin('rizki@example.local')} className="flex-1 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary hover:bg-primary/20">
-              rizki@example.local
+          <p className="text-sm text-center text-muted-foreground">Quick login (dev)</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => quickLogin('rizki', 'rizki123')} className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary hover:bg-primary/20">
+              rizki / rizki123
             </button>
-            <button onClick={() => quickLogin('admin@example.local')} className="flex-1 rounded-md bg-secondary/10 px-3 py-2 text-sm hover:bg-secondary/20">
-              admin@example.local
+            <button onClick={() => quickLogin('admin', 'admin123')} className="rounded-md bg-secondary/10 px-3 py-2 text-sm hover:bg-secondary/20">
+              admin / admin123
             </button>
           </div>
+          <p className="text-xs text-center text-muted-foreground">atau pakai email: rizki@example.local / admin@example.local</p>
         </div>
 
         <div className="relative py-2">
@@ -67,7 +70,7 @@ const LoginPage = () => {
             <div className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-muted-foreground">Or credentials</span>
+            <span className="bg-white px-2 text-muted-foreground">Username + Password</span>
           </div>
         </div>
 
@@ -78,15 +81,40 @@ const LoginPage = () => {
             </div>
           )}
           <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
+            <label htmlFor="identifier" className="text-sm font-medium">
+              Username or Email
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="input pl-10" required />
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                id="identifier"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="rizki atau rizki@example.local"
+                className="input pl-10"
+                required
+              />
             </div>
           </div>
-          <button type="submit" disabled={loading} className="w-full rounded-md bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
+          <div className="space-y-1">
+            <label htmlFor="password" className="text-sm font-medium">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="input pl-10"
+                required
+              />
+            </div>
+          </div>
+          <button type="submit" disabled={loading} className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow">
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
