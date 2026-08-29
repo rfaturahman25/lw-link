@@ -4,6 +4,7 @@ import { zValidator } from '@hono/zod-validator'
 import { createDb } from '../../db/client'
 import { links } from '../../db/schema'
 import { authMiddleware } from '../../middleware/auth'
+import { requirePermission, PERMISSIONS } from '../../middleware/rbac'
 import type { AuthUser } from '../../middleware/auth'
 import { linkCreateSchema, linkUpdateSchema, reorderSchema } from '../../utils/validation'
 
@@ -11,7 +12,7 @@ type Bindings = { DB: D1Database }
 
 const linksRoutes = new Hono<{ Bindings: Bindings; Variables: { user: AuthUser } }>()
 
-linksRoutes.use('*', authMiddleware(true))
+linksRoutes.use('*', authMiddleware(true), requirePermission(PERMISSIONS.LINK_READ))
 
 linksRoutes.get('/', async (c) => {
   const user = c.get('user') as AuthUser

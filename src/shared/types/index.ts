@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin'
+export type UserRole = 'user' | 'admin' | 'super_admin'
 export type UserStatus = 'active' | 'disabled'
 export type Theme = 'default' | 'light' | 'dark' | 'minimal' | 'gradient'
 export type ButtonStyle = 'rounded' | 'square' | 'pill'

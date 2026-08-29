@@ -7,7 +7,7 @@ export type AuthUser = {
   username: string
   displayName: string
   avatarUrl: string | null
-  role: 'user' | 'admin'
+  role: 'user' | 'admin' | 'super_admin'
   status: 'active' | 'disabled'
 }
 

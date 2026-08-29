@@ -1,4 +1,4 @@
-import { eq, and, or } from 'drizzle-orm'
+import { eq, or } from 'drizzle-orm'
 import { createDb } from '../db/client'
 import { users, sessions } from '../db/schema'
 import { hashToken, generateToken, hashPassword, verifyPassword } from '../utils/security'
@@ -9,7 +9,7 @@ export type SessionUser = {
   username: string
   displayName: string
   avatarUrl: string | null
-  role: 'user' | 'admin'
+  role: 'user' | 'admin' | 'super_admin'
   status: 'active' | 'disabled'
 }
 
@@ -27,7 +27,7 @@ export async function findOrCreateDevUser(db: D1Database, email: string): Promis
       username: u.username,
       displayName: u.displayName,
       avatarUrl: u.avatarUrl,
-      role: u.role as 'user' | 'admin',
+      role: u.role as 'user' | 'admin' | 'super_admin',
       status: u.status as 'active' | 'disabled',
     }
   }
@@ -60,10 +60,18 @@ export async function findOrCreateDevUser(db: D1Database, email: string): Promis
   }
 }
 
+export async function updateLastLogin(db: D1Database, userId: string) {
+  try {
+    const drizzle = createDb(db)
+    await drizzle.update(users).set({ lastLoginAt: new Date().toISOString() }).where(eq(users.id, userId))
+  } catch (_e) {
+    // ignore
+  }
+}
+
 export async function findUserByIdentifier(db: D1Database, identifier: string): Promise<SessionUser & { passwordHash: string | null } | null> {
   const drizzle = createDb(db)
   const isEmail = identifier.includes('@')
-  const col = isEmail ? users.email : users.username
   // username lookup case-insensitive
   const rows = isEmail
     ? await drizzle.select().from(users).where(eq(users.email, identifier.toLowerCase())).limit(1)
@@ -87,7 +95,7 @@ export async function findUserByIdentifier(db: D1Database, identifier: string): 
     username: row.username,
     displayName: row.displayName,
     avatarUrl: row.avatarUrl,
-    role: row.role as 'user' | 'admin',
+    role: row.role as 'user' | 'admin' | 'super_admin',
     status: row.status as 'active' | 'disabled',
     passwordHash: (row as unknown as { passwordHash?: string | null; password_hash?: string | null }).passwordHash ?? (row as unknown as { passwordHash?: string | null; password_hash?: string | null }).password_hash ?? null,
   } as SessionUser & { passwordHash: string | null }
@@ -97,7 +105,7 @@ export async function authenticateUser(db: D1Database, identifier: string, passw
   const drizzle = createDb(db)
   // try drizzle typed
   const lower = identifier.toLowerCase()
-  let rows = await drizzle.select().from(users).where(or(eq(users.email, lower), eq(users.username, lower))).limit(1)
+  const rows = await drizzle.select().from(users).where(or(eq(users.email, lower), eq(users.username, lower))).limit(1) as Array<typeof users.$inferSelect & { passwordHash?: string | null }>
   if (rows.length === 0) throw new Error('Invalid credentials')
   const u = rows[0] as typeof rows[0] & { passwordHash?: string | null }
   if (u.status === 'disabled') throw new Error('User disabled')
@@ -111,7 +119,7 @@ export async function authenticateUser(db: D1Database, identifier: string, passw
     username: u.username,
     displayName: u.displayName,
     avatarUrl: u.avatarUrl,
-    role: u.role as 'user' | 'admin',
+    role: u.role as 'user' | 'admin' | 'super_admin',
     status: u.status as 'active' | 'disabled',
   }
 }
@@ -122,7 +130,7 @@ export async function createUserWithPassword(
   username: string,
   displayName: string,
   password: string,
-  role: 'user' | 'admin' = 'user'
+  role: 'user' | 'admin' | 'super_admin' = 'user'
 ): Promise<SessionUser> {
   const drizzle = createDb(db)
   const id = crypto.randomUUID()
@@ -131,7 +139,9 @@ export async function createUserWithPassword(
   try {
     const { profiles } = await import('../db/schema')
     await drizzle.insert(profiles).values({ userId: id, published: false })
-  } catch {}
+  } catch (_e) {
+    // ignore profile creation error
+  }
   return { id, email, username, displayName, avatarUrl: null, role, status: 'active' }
 }
 
@@ -175,7 +185,7 @@ export async function validateSession(db: D1Database, token: string): Promise<Se
     username: u.username,
     displayName: u.displayName,
     avatarUrl: u.avatarUrl,
-    role: u.role as 'user' | 'admin',
+    role: u.role as 'user' | 'admin' | 'super_admin',
     status: u.status as 'active' | 'disabled',
   }
 }

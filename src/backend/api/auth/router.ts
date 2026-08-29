@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
-import { findOrCreateDevUser, createSession, validateSession, getTokenFromRequest, sessionCookie, clearSessionCookie, deleteSession, authenticateUser } from '../../services/auth'
+import { findOrCreateDevUser, createSession, validateSession, getTokenFromRequest, sessionCookie, clearSessionCookie, deleteSession, authenticateUser, updateLastLogin } from '../../services/auth'
 
 type Bindings = {
   DB: D1Database
@@ -39,6 +39,7 @@ authRoutes.post('/login', zValidator('json', loginSchema), async (c) => {
     const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0] || null
     const ua = c.req.header('user-agent') || null
     const { token, expiresAt } = await createSession(db, user.id, ua, ip)
+    await updateLastLogin(db, user.id)
     const isProd = c.env.NODE_ENV === 'production'
     c.header('Set-Cookie', sessionCookie(token, expiresAt, isProd))
     return c.json({ success: true, data: { user, token, expiresAt }, message: 'Login successful' })

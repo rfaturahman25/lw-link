@@ -33,12 +33,23 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   Calendar,
+  Shield,
+  Crown,
+  Trash2,
+  Ban,
+  CheckCircle,
+  AlertTriangle,
+  Search,
+  Filter,
+  Plus,
+  ScrollText,
 } from 'lucide-react'
 
 type Profile = { bio: string | null; team: string | null; company: string | null; theme: string; backgroundColor: string; textColor: string; buttonStyle: string; published: boolean; avatarUrl?: string | null; displayName?: string }
 type LinkItem = { id: string; title: string; url: string; icon: string | null; position: number; enabled: boolean }
+type AdminUser = { id: string; username: string; email: string; role: string; status: string; displayName?: string; lastLoginAt?: string | null; createdAt?: string; updatedAt?: string }
+type AuditLog = { id: string; actorUsername: string; actorRole: string; action: string; targetType: string; targetId?: string; targetUsername?: string; details?: string; ipAddress?: string; createdAt: string }
 
-// ---- icon picker ----
 const ICON_OPTIONS = [
   { value: 'link', label: 'Link', icon: LinkIcon },
   { value: 'instagram', label: 'Instagram', icon: Instagram },
@@ -79,6 +90,22 @@ const iconMap: Record<string, React.ReactNode> = {
   music: <Music className="h-5 w-5" />,
   tiktok: <Music className="h-5 w-5" />,
   default: <LinkIcon className="h-5 w-5" />,
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const cls =
+    role === 'super_admin'
+      ? 'bg-purple-100 text-purple-700 border-purple-200'
+      : role === 'admin'
+        ? 'bg-blue-100 text-blue-700 border-blue-200'
+        : 'bg-gray-100 text-gray-700 border-gray-200'
+  const icon = role === 'super_admin' ? <Crown className="h-3 w-3" /> : role === 'admin' ? <Shield className="h-3 w-3" /> : null
+  const label = role === 'super_admin' ? 'SUPER ADMIN' : role.toUpperCase()
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide ${cls}`}>
+      {icon} {label}
+    </span>
+  )
 }
 
 function SortableLinkItem({
@@ -134,7 +161,9 @@ function SortableLinkItem({
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [tab, setTab] = useState<'overview' | 'links' | 'profile' | 'analytics' | 'admin'>('overview')
+  const isSuper = user?.role === 'super_admin'
+  const isAdmin = user?.role === 'admin' || isSuper
+  const [tab, setTab] = useState<'overview' | 'links' | 'profile' | 'analytics' | 'users' | 'audit'>('overview')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [links, setLinks] = useState<LinkItem[]>([])
   const [analytics, setAnalytics] = useState<{
@@ -144,8 +173,18 @@ export default function DashboardPage() {
     topLinks: Array<{ linkId: string | null; clicks: number; title: string | null; url: string | null; icon: string | null }>
     daily: Array<{ date: string; views: number; clicks: number }>
   } | null>(null)
-  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; username: string; email: string; role: string; status: string }>>([])
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
+
+  // filters for user management
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin' | 'super_admin'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled'>('all')
+
+  // create user form
+  const [createForm, setCreateForm] = useState({ email: '', username: '', displayName: '', password: '', role: 'user' as 'user' | 'admin' | 'super_admin' })
+  const [creating, setCreating] = useState(false)
 
   const [form, setForm] = useState({ displayName: '', bio: '', team: '', company: '', theme: 'default', published: false })
   const [linkForm, setLinkForm] = useState({ title: '', url: '', icon: 'link' })
@@ -182,15 +221,43 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
+  const loadUsers = async () => {
+    try {
+      const r = (await api.adminUsers(search || undefined, roleFilter !== 'all' ? roleFilter : undefined, statusFilter !== 'all' ? statusFilter : undefined)) as { success: boolean; data: AdminUser[] }
+      setAdminUsers(r.data || [])
+    } catch (_e) {
+      // ignore
+    }
+  }
+
+  const loadAudit = async () => {
+    if (!isSuper) return
+    try {
+      const r = (await api.adminAuditLogs(50)) as { success: boolean; data: AuditLog[] }
+      setAuditLogs(r.data || [])
+    } catch (_e) {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     load()
   }, [])
 
   useEffect(() => {
-    if (tab === 'admin' && user?.role === 'admin') {
-      void (api.adminUsers() as Promise<{ success: boolean; data: typeof adminUsers }>).then((r) => setAdminUsers(r.data)).catch(() => {})
+    if ((tab === 'users' && isAdmin) || (tab === 'audit' && isSuper)) {
+      loadUsers()
+      if (isSuper) loadAudit()
     }
-  }, [tab, user])
+  }, [tab, roleFilter, statusFilter])
+
+  // debounce search
+  useEffect(() => {
+    if (tab === 'users') {
+      const t = setTimeout(loadUsers, 300)
+      return () => clearTimeout(t)
+    }
+  }, [search])
 
   const saveProfile = async () => {
     await api.profilePut({ bio: form.bio || null, team: form.team || null, company: form.company || null, theme: form.theme, displayName: form.displayName })
@@ -216,7 +283,7 @@ export default function DashboardPage() {
     await load()
   }
   const deleteLink = async (id: string) => {
-    if (!confirm('Delete link?')) return
+    if (!confirm('Delete link? This cannot be undone.')) return
     await api.linkDelete(id)
     await load()
   }
@@ -236,6 +303,93 @@ export default function DashboardPage() {
     }
   }
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (createForm.role === 'super_admin' && !isSuper) {
+      alert('Only SUPER_ADMIN can create super_admin')
+      return
+    }
+    if (createForm.role !== 'user' && !isSuper && !isAdmin) return
+    // warning for privilege escalation
+    if (createForm.role === 'admin' || createForm.role === 'super_admin') {
+      if (!confirm(`Create ${createForm.role.toUpperCase()}? This grants elevated permissions.`)) return
+    }
+    setCreating(true)
+    try {
+      await api.adminCreateUser(createForm)
+      setCreateForm({ email: '', username: '', displayName: '', password: '', role: 'user' })
+      await loadUsers()
+      alert('User created')
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Create failed')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleRoleChange = async (u: AdminUser, newRole: string) => {
+    if (u.id === user?.id) {
+      alert('Cannot change own role')
+      return
+    }
+    if (newRole === 'super_admin' && !isSuper) {
+      alert('Only SUPER_ADMIN can assign super_admin')
+      return
+    }
+    if (u.role === 'super_admin' && !isSuper) {
+      alert('Only SUPER_ADMIN can manage super_admin')
+      return
+    }
+    if (newRole !== 'user' && (newRole === 'super_admin' || newRole === 'admin')) {
+      if (!confirm(`Change ${u.username} from ${u.role.toUpperCase()} → ${newRole.toUpperCase()}? This changes privileges.`)) return
+    } else {
+      if (!confirm(`Change role for @${u.username} to ${newRole}?`)) return
+    }
+    try {
+      await api.adminUpdateUserRole(u.id, newRole)
+      await loadUsers()
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Role change failed')
+    }
+  }
+
+  const handleStatus = async (u: AdminUser) => {
+    if (u.id === user?.id) {
+      alert('Cannot change own status')
+      return
+    }
+    if (u.role === 'super_admin' && !isSuper) {
+      alert('Cannot disable SUPER_ADMIN')
+      return
+    }
+    if (!confirm(`${u.status === 'active' ? 'Disable' : 'Enable'} @${u.username}?`)) return
+    try {
+      await api.adminUpdateUserStatus(u.id, u.status === 'active' ? 'disabled' : 'active')
+      await loadUsers()
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Status change failed')
+    }
+  }
+
+  const handleDelete = async (u: AdminUser) => {
+    if (u.id === user?.id) {
+      alert('Cannot delete yourself')
+      return
+    }
+    if (u.role === 'super_admin' && !isSuper) {
+      alert('Cannot delete SUPER_ADMIN')
+      return
+    }
+    if (!confirm(`Delete @${u.username} (${u.role})? This deletes profile & links and cannot be undone.`)) return
+    if (!confirm(`Confirm again: DELETE @${u.username}?`)) return
+    try {
+      await api.adminDeleteUser(u.id)
+      await loadUsers()
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
   if (loading) return <div className="p-8 text-center">Loading dashboard...</div>
 
   const publicUrl = user ? `${window.location.origin}/@${user.username}` : ''
@@ -249,10 +403,25 @@ export default function DashboardPage() {
               {t}
             </button>
           ))}
-          {user?.role === 'admin' && (
-            <button onClick={() => setTab('admin')} className={`w-full text-left rounded-md px-3 py-2 text-sm ${tab === 'admin' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}>
-              Admin
+          {isAdmin && (
+            <button onClick={() => setTab('users')} className={`w-full text-left rounded-md px-3 py-2 text-sm flex items-center gap-2 ${tab === 'users' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}>
+              <Users className="h-4 w-4" /> Users
             </button>
+          )}
+          {isSuper && (
+            <button onClick={() => setTab('audit')} className={`w-full text-left rounded-md px-3 py-2 text-sm flex items-center gap-2 ${tab === 'audit' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}>
+              <ScrollText className="h-4 w-4" /> Audit Logs
+            </button>
+          )}
+          {isSuper && (
+            <div className="pt-2 mt-2 border-t">
+              <p className="px-3 text-[10px] font-bold tracking-wide text-muted-foreground">SUPER ADMIN</p>
+            </div>
+          )}
+          {user && (
+            <div className="px-3 py-2 flex items-center gap-2">
+              <RoleBadge role={user.role} />
+            </div>
           )}
         </div>
         <div className="card p-4 text-center space-y-2">
@@ -425,11 +594,8 @@ export default function DashboardPage() {
           const topLinksWithPct = topLinks.map((l) => ({ ...l, pct: totalClicks > 0 ? (l.clicks / totalClicks) * 100 : 0 }))
           const maxDaily = Math.max(1, ...daily.map((d) => Math.max(d.views, d.clicks)))
           const maxClicks = Math.max(1, ...topLinks.map((l) => l.clicks), 1)
-          // donuts colors - use primary palette + distinct hues
           const donutColors = ['hsl(var(--primary))', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1']
           const hasData = totalClicks > 0 || totalViews > 0
-
-          // helpers for daily chart
           const chartW = 600
           const chartH = 140
           const padL = 28, padR = 12, padT = 12, padB = 22
@@ -442,8 +608,6 @@ export default function DashboardPage() {
           const clicksPath = daily.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.clicks)}`).join(' ')
           const viewsArea = `${viewsPath} L ${xScale(daily.length - 1)} ${padT + innerH} L ${xScale(0)} ${padT + innerH} Z`
           const clicksArea = `${clicksPath} L ${xScale(daily.length - 1)} ${padT + innerH} L ${xScale(0)} ${padT + innerH} Z`
-
-          // donut calc
           let acc = 0
           const donutSegments = topLinksWithPct.map((l, i) => {
             const start = acc
@@ -451,7 +615,6 @@ export default function DashboardPage() {
             acc += len
             return { ...l, start, len, color: donutColors[i % donutColors.length] }
           })
-
           return (
             <div className="space-y-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -463,7 +626,6 @@ export default function DashboardPage() {
                   <Calendar className="h-4 w-4" /> {daily[0]?.date ?? '—'} — {daily[daily.length - 1]?.date ?? '—'}
                 </div>
               </div>
-
               {!hasData && (
                 <div className="card p-8 text-center space-y-2">
                   <BarChart3 className="h-8 w-8 mx-auto text-muted-foreground" />
@@ -471,8 +633,6 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted-foreground">Share your profile <span className="font-mono">/@{user?.username}</span> and clicks/views will appear here.</p>
                 </div>
               )}
-
-              {/* Summary metrics */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="card p-4 space-y-2">
                   <div className="flex items-center justify-between">
@@ -513,8 +673,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-
-              {/* Secondary metrics */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="card p-3 flex items-center justify-between">
                   <div>
@@ -532,9 +690,7 @@ export default function DashboardPage() {
                   <p className="text-lg font-bold">{(totalViews / 7).toFixed(1)}</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Ranking */}
                 <div className="card p-4 lg:col-span-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-600" /> Ranking — Most Clicked</h3>
@@ -566,8 +722,6 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground py-6 text-center">No link clicks yet — data will appear after visitors click your links.</p>
                   )}
                 </div>
-
-                {/* Share donut */}
                 <div className="card p-4 lg:col-span-2 space-y-4">
                   <h3 className="font-semibold flex items-center gap-2"><PieChartIcon className="h-4 w-4 text-primary" /> Click Share</h3>
                   {topLinksWithPct.length ? (
@@ -581,15 +735,7 @@ export default function DashboardPage() {
                               const gap = 2 * Math.PI * 32 - dash
                               const offset = (s.start / 100) * (2 * Math.PI * 32)
                               return (
-                                <circle
-                                  key={s.linkId || i}
-                                  cx="50" cy="50" r="32" fill="transparent"
-                                  stroke={s.color} strokeWidth="18"
-                                  strokeDasharray={`${dash} ${gap}`}
-                                  strokeDashoffset={-offset}
-                                  strokeLinecap="round"
-                                  className="transition-all"
-                                />
+                                <circle key={s.linkId || i} cx="50" cy="50" r="32" fill="transparent" stroke={s.color} strokeWidth="18" strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset} strokeLinecap="round" className="transition-all" />
                               )
                             })}
                           </svg>
@@ -617,8 +763,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-
-              {/* Bar chart - clicks per link */}
               <div className="card p-4 space-y-3">
                 <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> Clicks per Link</h3>
                 {topLinks.length ? (
@@ -639,8 +783,6 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted-foreground py-4 text-center">No data for bar chart</p>
                 )}
               </div>
-
-              {/* Time series */}
               <div className="card p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> Clicks & Views — Last 7 Days</h3>
@@ -651,36 +793,29 @@ export default function DashboardPage() {
                 </div>
                 <div className="w-full overflow-x-auto">
                   <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-[180px] min-w-[520px]" preserveAspectRatio="xMidYMid meet">
-                    {/* grid */}
                     {[0, 1, 2, 3].map((g) => {
                       const y = padT + (innerH / 3) * g
                       return <line key={g} x1={padL} x2={chartW - padR} y1={y} y2={y} stroke="hsl(var(--border))" strokeWidth="0.7" strokeDasharray="3 4" opacity={0.6} />
                     })}
-                    {/* y labels */}
                     {[maxDaily, Math.round(maxDaily * 0.66), Math.round(maxDaily * 0.33), 0].map((v, i) => {
                       const y = padT + (innerH / 3) * i
                       return <text key={i} x={padL - 6} y={y + 3} textAnchor="end" fontSize="8" fill="hsl(var(--muted-foreground))">{v}</text>
                     })}
-                    {/* areas */}
                     <path d={viewsArea} fill="#3b82f6" opacity="0.08" />
                     <path d={clicksArea} fill="hsl(var(--primary))" opacity="0.12" />
-                    {/* lines */}
                     <path d={viewsPath} fill="none" stroke="#3b82f6" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
                     <path d={clicksPath} fill="none" stroke="hsl(var(--primary))" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-                    {/* dots */}
                     {daily.map((d, i) => (
                       <g key={i}>
                         <circle cx={xScale(i)} cy={yScale(d.views)} r="3.5" fill="#3b82f6" stroke="white" strokeWidth="1.2" />
                         <circle cx={xScale(i)} cy={yScale(d.clicks)} r="3.5" fill="hsl(var(--primary))" stroke="white" strokeWidth="1.2" />
                       </g>
                     ))}
-                    {/* x labels */}
                     {daily.map((d, i) => (
                       <text key={i} x={xScale(i)} y={chartH - 4} textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))">{d.date.slice(5)}</text>
                     ))}
                   </svg>
                 </div>
-                {/* mobile fallback table */}
                 <div className="grid grid-cols-7 gap-1 text-center lg:hidden">
                   {daily.map((d) => (
                     <div key={d.date} className="rounded bg-muted/50 p-1.5">
@@ -691,8 +826,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
-
-              {/* Detail table */}
               <div className="card overflow-hidden">
                 <div className="p-4 pb-2 flex items-center justify-between">
                   <h3 className="font-semibold">Link Details</h3>
@@ -739,44 +872,196 @@ export default function DashboardPage() {
           )
         })()}
 
-        {tab === 'admin' && user?.role === 'admin' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Admin — Users</h2>
-            <div className="card p-4 space-y-2">
-              {adminUsers.map((u) => (
-                <div key={u.id} className="flex items-center justify-between rounded border p-2 text-sm">
-                  <div>
-                    <p className="font-medium">
-                      @{u.username} — {u.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {u.role} • {u.status}
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={async () => {
-                        await fetch(`/api/admin/users/${u.id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('session_token') || ''}` }, body: JSON.stringify({ status: u.status === 'active' ? 'disabled' : 'active' }) })
-                        setAdminUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, status: x.status === 'active' ? 'disabled' : 'active' } : x)))
-                      }}
-                      className="rounded border px-2 py-1 text-xs hover:bg-accent"
-                    >
-                      Toggle status
-                    </button>
-                    <button
-                      onClick={async () => {
-                        await fetch(`/api/admin/users/${u.id}/role`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('session_token') || ''}` }, body: JSON.stringify({ role: u.role === 'admin' ? 'user' : 'admin' }) })
-                        setAdminUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, role: x.role === 'admin' ? 'user' : 'admin' } : x)))
-                      }}
-                      className="rounded border px-2 py-1 text-xs hover:bg-accent"
-                    >
-                      Toggle role
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {adminUsers.length === 0 && <p className="text-sm text-muted-foreground">No users</p>}
+        {/* USERS - RBAC */}
+        {tab === 'users' && isAdmin && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6" /> User Management</h2>
+                <p className="text-sm text-muted-foreground">Manage users • {user?.role === 'super_admin' ? 'Super Admin can manage all' : 'Admin can manage users only'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <RoleBadge role={user?.role || 'user'} />
+                <span className="text-xs text-muted-foreground">{adminUsers.length} users</span>
+              </div>
             </div>
+
+            {/* Create user */}
+            <div className="card p-4 space-y-3">
+              <h3 className="font-semibold flex items-center gap-2"><Plus className="h-4 w-4" /> Create User</h3>
+              <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="email@lensawaktu.id" className="input" type="email" required />
+                <input value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} placeholder="username (a-z0-9_)" className="input" required />
+                <input value={createForm.displayName} onChange={(e) => setCreateForm({ ...createForm, displayName: e.target.value })} placeholder="Display name" className="input" required />
+                <input value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} placeholder="password (min 6)" className="input" type="password" required />
+                <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as never })} className="input">
+                  <option value="user">USER</option>
+                  <option value="admin">ADMIN</option>
+                  {isSuper && <option value="super_admin">SUPER_ADMIN</option>}
+                </select>
+                <button type="submit" disabled={creating} className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow md:col-span-2">
+                  {creating ? 'Creating...' : <><Plus className="h-4 w-4" /> Create {createForm.role.toUpperCase()}</>}
+                </button>
+              </form>
+              <p className="text-xs text-muted-foreground">
+                {isSuper ? 'Super Admin can create any role.' : 'Admin can only create USER. Cannot create ADMIN/SUPER_ADMIN.'}
+              </p>
+            </div>
+
+            {/* Filters */}
+            <div className="card p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name/email/username" className="input pl-10" />
+                </div>
+                <div className="flex gap-2">
+                  <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as never)} className="input">
+                    <option value="all">All roles</option>
+                    <option value="super_admin">Super Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                  </select>
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as never)} className="input">
+                    <option value="all">All status</option>
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Filter className="h-4 w-4" /> Filters: {roleFilter} / {statusFilter} {search && `• "${search}"`}
+              </div>
+            </div>
+
+            {/* Users table */}
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
+                      <th className="text-left font-medium px-4 py-3">Name</th>
+                      <th className="text-left font-medium px-4 py-3 hidden md:table-cell">Email</th>
+                      <th className="text-left font-medium px-4 py-3">Role</th>
+                      <th className="text-left font-medium px-4 py-3">Status</th>
+                      <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">Created</th>
+                      <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">Last Login</th>
+                      <th className="text-right font-medium px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminUsers.map((u) => (
+                      <tr key={u.id} className="border-b last:border-0 hover:bg-muted/20">
+                        <td className="px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate flex items-center gap-2">
+                              @{u.username}
+                              {u.id === user?.id && <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">YOU</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                            <p className="text-xs md:hidden text-muted-foreground">{u.role} • {u.status}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell text-xs truncate max-w-[180px]">{u.email}</td>
+                        <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${u.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {u.status === 'active' ? <CheckCircle className="h-3 w-3" /> : <Ban className="h-3 w-3" />} {u.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 hidden lg:table-cell text-xs text-muted-foreground">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+                        <td className="px-4 py-3 hidden lg:table-cell text-xs text-muted-foreground">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : 'never'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-1 flex-wrap">
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u, e.target.value)}
+                              disabled={u.id === user?.id || (u.role === 'super_admin' && !isSuper)}
+                              className="rounded border px-2 py-1 text-xs bg-background disabled:opacity-50"
+                              title={u.role === 'super_admin' && !isSuper ? 'Only SUPER_ADMIN can change super_admin' : 'Change role'}
+                            >
+                              <option value="user">USER</option>
+                              <option value="admin">ADMIN</option>
+                              {isSuper && <option value="super_admin">SUPER_ADMIN</option>}
+                              {!isSuper && u.role === 'super_admin' && <option value="super_admin">SUPER_ADMIN</option>}
+                            </select>
+                            <button
+                              onClick={() => handleStatus(u)}
+                              disabled={u.id === user?.id || (u.role === 'super_admin' && !isSuper)}
+                              className="rounded border px-2 py-1 text-xs hover:bg-accent disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {u.status === 'active' ? <Ban className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />} {u.status === 'active' ? 'Disable' : 'Enable'}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(u)}
+                              disabled={u.id === user?.id || (u.role === 'super_admin' && !isSuper)}
+                              className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100 disabled:opacity-50 flex items-center gap-1"
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {adminUsers.length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No users found</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'audit' && isSuper && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2"><ScrollText className="h-6 w-6" /> Audit Logs</h2>
+            <p className="text-sm text-muted-foreground">Sensitive actions — SUPER_ADMIN only • {auditLogs.length} entries</p>
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
+                      <th className="text-left font-medium px-4 py-2">Time</th>
+                      <th className="text-left font-medium px-4 py-2">Actor</th>
+                      <th className="text-left font-medium px-4 py-2">Action</th>
+                      <th className="text-left font-medium px-4 py-2">Target</th>
+                      <th className="text-left font-medium px-4 py-2 hidden md:table-cell">Details</th>
+                      <th className="text-left font-medium px-4 py-2 hidden lg:table-cell">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((l) => (
+                      <tr key={l.id} className="border-b last:border-0 hover:bg-muted/20">
+                        <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(l.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-xs">@{l.actorUsername}</span>
+                            <RoleBadge role={l.actorRole} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-2"><span className="inline-flex rounded bg-muted px-2 py-1 text-xs font-mono">{l.action}</span></td>
+                        <td className="px-4 py-2 text-xs">
+                          <span className="font-medium">{l.targetType}</span> {l.targetUsername ? `@${l.targetUsername}` : l.targetId ? l.targetId.slice(0, 8) : '—'}
+                        </td>
+                        <td className="px-4 py-2 hidden md:table-cell text-xs text-muted-foreground max-w-[200px] truncate">{l.details || '—'}</td>
+                        <td className="px-4 py-2 hidden lg:table-cell text-xs text-muted-foreground">{l.ipAddress || '—'}</td>
+                      </tr>
+                    ))}
+                    {auditLogs.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No audit logs yet</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'audit' && !isSuper && (
+          <div className="card p-8 text-center space-y-2">
+            <AlertTriangle className="h-8 w-8 mx-auto text-amber-500" />
+            <p className="font-medium">Access denied</p>
+            <p className="text-sm text-muted-foreground">Audit logs — SUPER_ADMIN only</p>
           </div>
         )}
       </main>

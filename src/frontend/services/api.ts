@@ -30,7 +30,19 @@ export const api = {
   trackView: (username: string) => request(`/api/public/${username}/view`, { method: 'POST' }),
   trackClick: (username: string, linkId: string) => request(`/api/public/${username}/click`, { method: 'POST', body: JSON.stringify({ linkId }) }),
   analytics: () => request('/api/analytics'),
-  adminUsers: (q?: string) => request(`/api/admin/users${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  adminUsers: (q?: string, role?: string, status?: string) => {
+    const p = new URLSearchParams()
+    if (q) p.set('q', q)
+    if (role) p.set('role', role)
+    if (status) p.set('status', status)
+    const qs = p.toString() ? `?${p.toString()}` : ''
+    return request(`/api/admin/users${qs}`)
+  },
+  adminCreateUser: (data: unknown) => request('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateUserStatus: (id: string, status: string) => request(`/api/admin/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  adminUpdateUserRole: (id: string, role: string) => request(`/api/admin/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
+  adminDeleteUser: (id: string) => request(`/api/admin/users/${id}`, { method: 'DELETE' }),
+  adminAuditLogs: (limit?: number) => request(`/api/admin/audit-logs${limit ? `?limit=${limit}` : ''}`),
 }
 
 export function setSessionToken(token: string) {

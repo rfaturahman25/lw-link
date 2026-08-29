@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Home, User, LogIn, LogOut, Shield } from 'lucide-react'
+import { Home, User, LogIn, LogOut, Shield, Crown } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const Header = () => {
@@ -28,13 +28,24 @@ const Header = () => {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="hidden sm:inline text-sm text-muted-foreground">@{user.username}</span>
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                @{user.username}
+                <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold ${user.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200' : user.role === 'admin' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700'}`}>
+                  {user.role === 'super_admin' ? <Crown className="h-3 w-3" /> : user.role === 'admin' ? <Shield className="h-3 w-3" /> : null}
+                  {user.role === 'super_admin' ? 'SUPER' : user.role.toUpperCase()}
+                </span>
+              </span>
               <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-primary text-white hover:bg-primary/90">
                 <User className="h-4 w-4" /> Dashboard
               </Link>
-              {user.role === 'admin' && (
-                <Link to="/dashboard?admin=1" className="hidden sm:inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm">
-                  <Shield className="h-4 w-4" /> Admin
+              {(user.role === 'admin' || user.role === 'super_admin') && (
+                <Link to="/dashboard" className="hidden sm:inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-accent">
+                  <Shield className="h-4 w-4" /> Users
+                </Link>
+              )}
+              {user.role === 'super_admin' && (
+                <Link to="/dashboard" className="hidden sm:inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-accent">
+                  <Crown className="h-4 w-4" /> Audit
                 </Link>
               )}
               <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm border hover:bg-accent">

@@ -8,8 +8,9 @@ export const users = sqliteTable('users', {
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
   passwordHash: text('password_hash'),
-  role: text('role', { enum: ['user', 'admin'] }).notNull().default('user'),
+  role: text('role', { enum: ['user', 'admin', 'super_admin'] }).notNull().default('user'),
   status: text('status', { enum: ['active', 'disabled'] }).notNull().default('active'),
+  lastLoginAt: text('last_login_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 })
@@ -67,6 +68,21 @@ export const sessions = sqliteTable('sessions', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 })
 
+export const auditLogs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  actorId: text('actor_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  actorUsername: text('actor_username').notNull(),
+  actorRole: text('actor_role').notNull(),
+  action: text('action').notNull(),
+  targetType: text('target_type').notNull(),
+  targetId: text('target_id'),
+  targetUsername: text('target_username'),
+  details: text('details'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+})
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Profile = typeof profiles.$inferSelect
@@ -75,3 +91,4 @@ export type Link = typeof links.$inferSelect
 export type NewLink = typeof links.$inferInsert
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect
 export type Session = typeof sessions.$inferSelect
+export type AuditLog = typeof auditLogs.$inferSelect

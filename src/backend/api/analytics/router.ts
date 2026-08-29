@@ -3,12 +3,13 @@ import { eq, and, sql, desc, gte } from 'drizzle-orm'
 import { createDb } from '../../db/client'
 import { analyticsEvents, links } from '../../db/schema'
 import { authMiddleware } from '../../middleware/auth'
+import { requirePermission, PERMISSIONS } from '../../middleware/rbac'
 import type { AuthUser } from '../../middleware/auth'
 
 type Bindings = { DB: D1Database }
 
 const analyticsRoutes = new Hono<{ Bindings: Bindings; Variables: { user: AuthUser } }>()
-analyticsRoutes.use('*', authMiddleware(true))
+analyticsRoutes.use('*', authMiddleware(true), requirePermission(PERMISSIONS.ANALYTICS_VIEW))
 
 analyticsRoutes.get('/', async (c) => {
   const user = c.get('user') as AuthUser
