@@ -1,0 +1,78 @@
+import { Hono } from 'hono'
+import { eq, and, desc, sql, count } from 'drizzle-orm'
+import { createDb } from '../../db/client'
+import { users, profiles, links, analyticsEvents } from '../../db/schema'
+import { hashIP } from '../../utils/security'
+
+type Bindings = { DB: D1Database }
+
+const publicRoutes = new Hono<{ Bindings: Bindings }>()
+
+publicRoutes.get('/:username', async (c) => {
+  const username = c.req.param('username')
+  const db = createDb(c.env.DB)
+  const uRows = await db.select().from(users).where(eq(users.username, username.toLowerCase())).limit(1)
+  if (uRows.length === 0) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not found' } }, 404)
+  const user = uRows[0]
+  if (user.status === 'disabled') return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not found' } }, 404)
+  const pRows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+  const profile = pRows[0]
+  if (!profile || !profile.published) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not published' } }, 404)
+  const lRows = await db.select().from(links).where(and(eq(links.userId, user.id), eq(links.enabled, true))).orderBy(links.position)
+  return c.json({
+    success: true,
+    data: {
+      user: { id: user.id, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl },
+      profile,
+      links: lRows,
+    },
+  })
+})
+
+publicRoutes.post('/:username/view', async (c) => {
+  const username = c.req.param('username')
+  const db = createDb(c.env.DB)
+  const uRows = await db.select().from(users).where(eq(users.username, username.toLowerCase())).limit(1)
+  if (uRows.length === 0) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
+  const user = uRows[0]
+  const pRows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+  if (!pRows[0]?.published) return c.json({ success: false }, 404)
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+  const ipHash = await hashIP(ip)
+  await db.insert(analyticsEvents).values({
+    userId: user.id,
+    linkId: null,
+    eventType: 'profile_view',
+    userAgent: c.req.header('user-agent')?.slice(0, 500) || null,
+    referrer: c.req.header('referer')?.slice(0, 500) || null,
+    ipHash,
+    countryCode: (c.req.header('cf-ipcountry') || null) as string | null,
+  })
+  return c.json({ success: true })
+})
+
+publicRoutes.post('/:username/click', async (c) => {
+  const username = c.req.param('username')
+  const { linkId } = await c.req.json().catch(() => ({})) as { linkId?: string }
+  if (!linkId) return c.json({ success: false, error: { code: 'MISSING_LINK' } }, 400)
+  const db = createDb(c.env.DB)
+  const uRows = await db.select().from(users).where(eq(users.username, username.toLowerCase())).limit(1)
+  if (uRows.length === 0) return c.json({ success: false }, 404)
+  const user = uRows[0]
+  const lRows = await db.select().from(links).where(eq(links.id, linkId)).limit(1)
+  if (lRows.length === 0 || lRows[0].userId !== user.id) return c.json({ success: false }, 404)
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+  const ipHash = await hashIP(ip)
+  await db.insert(analyticsEvents).values({
+    userId: user.id,
+    linkId,
+    eventType: 'link_click',
+    userAgent: c.req.header('user-agent')?.slice(0, 500) || null,
+    referrer: c.req.header('referer')?.slice(0, 500) || null,
+    ipHash,
+    countryCode: (c.req.header('cf-ipcountry') || null) as string | null,
+  })
+  return c.json({ success: true })
+})
+
+export default publicRoutes

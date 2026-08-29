@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Cloudflare Workers-specific
+    "types": ["@cloudflare/workers-types"],
+    
+    // Module resolution for Cloudflare
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    
+    // Output
+    "noEmit": false,
+    "outDir": "./dist/backend",
+    
+    // Additional configurations
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/backend/**/*.ts",
+    "src/shared/**/*.ts"
+  ],
+  "exclude": [
+    "src/frontend/**/*",
+    "node_modules",
+    "dist"
+  ]
+}

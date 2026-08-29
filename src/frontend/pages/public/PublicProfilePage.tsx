@@ -1,0 +1,135 @@
+import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Github, Linkedin, Twitter, Globe, Mail, Link as LinkIcon, Instagram, Youtube, Facebook, ExternalLink } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+import { api } from '../../services/api'
+
+const iconMap: Record<string, React.ReactNode> = {
+  github: <Github className="h-5 w-5" />,
+  linkedin: <Linkedin className="h-5 w-5" />,
+  twitter: <Twitter className="h-5 w-5" />,
+  globe: <Globe className="h-5 w-5" />,
+  mail: <Mail className="h-5 w-5" />,
+  instagram: <Instagram className="h-5 w-5" />,
+  youtube: <Youtube className="h-5 w-5" />,
+  facebook: <Facebook className="h-5 w-5" />,
+  default: <LinkIcon className="h-5 w-5" />,
+}
+
+type ProfileData = {
+  user: { username: string; displayName: string; avatarUrl: string | null }
+  profile: { bio: string | null; team: string | null; company: string | null; theme?: string; backgroundColor?: string; textColor?: string }
+  links: Array<{ id: string; title: string; url: string; icon: string | null }>
+}
+
+const PublicProfilePage = () => {
+  const { username } = useParams<{ username: string }>()
+  const clean = (username || '').replace(/^@/, '')
+  const [data, setData] = useState<ProfileData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!clean) return
+    setLoading(true)
+    api
+      .publicProfile(clean)
+      .then((r: unknown) => {
+        const res = r as { success: boolean; data: ProfileData }
+        setData(res.data)
+        // SEO: title + meta
+        document.title = `${res.data.user.displayName} — ${res.data.profile.bio?.slice(0, 60) || 'LW-link'}`
+        const desc = res.data.profile.bio || `${res.data.user.displayName} on LW-link`
+        let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null
+        if (!meta) {
+          meta = document.createElement('meta')
+          meta.name = 'description'
+          document.head.appendChild(meta)
+        }
+        meta.content = desc.slice(0, 160)
+        // OG
+        const setOg = (prop: string, content: string) => {
+          let el = document.querySelector(`meta[property="${prop}"]`) as HTMLMetaElement | null
+          if (!el) {
+            el = document.createElement('meta')
+            el.setAttribute('property', prop)
+            document.head.appendChild(el)
+          }
+          el.content = content
+        }
+        setOg('og:title', res.data.user.displayName)
+        setOg('og:description', desc.slice(0, 200))
+        setOg('og:url', `${window.location.origin}/@${res.data.user.username}`)
+        if (res.data.user.avatarUrl) setOg('og:image', res.data.user.avatarUrl)
+        api.trackView(clean).catch(() => {})
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : 'Not found'
+        setError(msg.includes('404') || msg.includes('not') ? 'Profile not found or unpublished' : msg)
+      })
+      .finally(() => setLoading(false))
+  }, [clean])
+
+  if (loading) return <div className="text-center py-16 text-muted-foreground">Loading @{clean}...</div>
+  if (error || !data) return <div className="text-center py-16"><p className="text-xl font-semibold">404 — {error}</p><p className="text-sm text-muted-foreground mt-2">Check /@{clean} is published and user is active</p></div>
+
+  const profileUrl = `${window.location.origin}/@${data.user.username}`
+  const themeBg = data.profile.backgroundColor || '#ffffff'
+  const textColor = data.profile.textColor || '#000000'
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-8" style={{ backgroundColor: themeBg, color: textColor }}>
+      <div className="text-center space-y-4 py-6">
+        <div className="h-28 w-28 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center mx-auto overflow-hidden">
+          {data.user.avatarUrl ? (
+            <img src={data.user.avatarUrl} alt={data.user.displayName} className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-3xl font-bold text-white">{data.user.displayName.charAt(0).toUpperCase()}</span>
+          )}
+        </div>
+        <h1 className="text-3xl font-bold">{data.user.displayName}</h1>
+        <p className="text-muted-foreground">{data.profile.bio || 'No bio yet'}</p>
+        <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
+          {data.profile.company && <span>{data.profile.company}</span>}
+          {data.profile.team && <span>• {data.profile.team}</span>}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {data.links.map((link) => (
+          <a
+            key={link.id}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => api.trackClick(clean, link.id).catch(() => {})}
+            className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{iconMap[link.icon || 'default'] || iconMap.default}</div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-900">{link.title}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
+              </div>
+            </div>
+            <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+          </a>
+        ))}
+        {data.links.length === 0 && <p className="text-center text-muted-foreground py-8">No links yet</p>}
+      </div>
+
+      <div className="card p-6 text-center space-y-3 bg-white">
+        <h3 className="font-semibold">Share</h3>
+        <p className="text-sm text-muted-foreground break-all">{profileUrl}</p>
+        <div className="flex justify-center bg-white p-4 rounded-lg">
+          <QRCodeSVG value={profileUrl} size={180} />
+        </div>
+        <a href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(profileUrl)}`} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+          Download QR (opens image)
+        </a>
+      </div>
+    </div>
+  )
+}
+
+export default PublicProfilePage

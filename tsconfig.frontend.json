@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // React-specific
+    "jsx": "react-jsx",
+    
+    // Frontend-specific
+    "types": ["vite/client", "@types/react", "@types/react-dom"],
+    
+    // Module resolution
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    
+    // Output
+    "noEmit": false,
+    "outDir": "./dist/frontend",
+    
+    // Additional strictness
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true
+  },
+  "include": [
+    "src/frontend/**/*.ts",
+    "src/frontend/**/*.tsx",
+    "src/shared/**/*.ts",
+    "src/shared/**/*.tsx"
+  ],
+  "exclude": [
+    "src/backend/**/*",
+    "node_modules",
+    "dist"
+  ]
+}
