@@ -1,9 +1,21 @@
-import { useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { api, setSessionToken, clearSessionToken } from '../services/api'
 
 export type User = { id: string; email: string; username: string; displayName: string; avatarUrl: string | null; role: 'user' | 'admin' | 'super_admin' }
 
-export function useAuth() {
+type AuthContextType = {
+  user: User | null
+  loading: boolean
+  login: (identifier: string, password: string) => Promise<User>
+  logout: () => Promise<void>
+  isAdmin: boolean
+  isSuperAdmin: boolean
+  hasPermission: (perm: string) => boolean
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -36,10 +48,16 @@ export function useAuth() {
     if (user.role === 'super_admin') return true
     const map: Record<string, string[]> = {
       user: ['profile.manage', 'link.read', 'link.create', 'link.update', 'link.delete', 'analytics.view'],
-      admin: ['user.read', 'user.create', 'user.update', 'user.disable', 'user.delete', 'analytics.view', 'analytics.view_all', 'link.manage_all', 'profile.manage'],
+      admin: ['user.read', 'user.create', 'user.update', 'user.disable', 'user.delete', 'role.manage', 'analytics.view', 'analytics.view_all', 'link.manage_all', 'profile.manage', 'link.read', 'link.create', 'link.update', 'link.delete'],
     }
     return map[user.role]?.includes(perm) || false
   }
 
-  return { user, loading, login, logout, isAdmin: user?.role === 'admin' || user?.role === 'super_admin', isSuperAdmin: user?.role === 'super_admin', hasPermission }
+  return React.createElement(AuthContext.Provider, { value: { user, loading, login, logout, isAdmin: user?.role === 'admin' || user?.role === 'super_admin', isSuperAdmin: user?.role === 'super_admin', hasPermission } }, children)
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
 }

@@ -81,7 +81,29 @@ const PublicProfilePage = () => {
   }, [clean])
 
   if (loading) return <div className="text-center py-16 text-muted-foreground">Loading @{clean}...</div>
-  if (error || !data) return <div className="text-center py-16"><p className="text-xl font-semibold">404 — {error}</p><p className="text-sm text-muted-foreground mt-2">Check /@{clean} is published and user is active</p></div>
+  if (error || !data)
+    return (
+      <div className="max-w-lg mx-auto text-center space-y-6 py-16">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+          <LinkIcon className="h-8 w-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold">404</h1>
+          <h2 className="text-xl font-semibold">This page doesn't exist</h2>
+          <p className="text-sm text-muted-foreground">The Linktree page you're looking for doesn't exist or may have been removed.</p>
+          {error && <p className="text-xs text-muted-foreground">@{clean} — {error}</p>}
+        </div>
+        <div className="flex justify-center gap-3">
+          <a href="/" className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            Back to Home
+          </a>
+          <a href="/login" className="inline-flex items-center justify-center rounded-md border px-6 py-2.5 text-sm hover:bg-accent">
+            Go to Login
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground">LW-link • Internal Linktree</p>
+      </div>
+    )
 
   const profileUrl = `${window.location.origin}/@${data.user.username}`
   const themeBg = data.profile.backgroundColor || '#ffffff'
