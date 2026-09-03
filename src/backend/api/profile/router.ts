@@ -46,6 +46,9 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
   if (body.avatarUrl !== undefined) {
     await db.update(users).set({ avatarUrl: body.avatarUrl || null }).where(eq(users.id, user.id))
   }
+  if (body.logoUrl !== undefined) {
+    await db.update(profiles).set({ logoUrl: body.logoUrl || null }).where(eq(profiles.userId, user.id))
+  }
   const rows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
   return c.json({ success: true, data: rows[0] })
 })
