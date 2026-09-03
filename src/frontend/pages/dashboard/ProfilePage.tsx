@@ -2,25 +2,40 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardContext } from './DashboardLayout'
 import { api } from '../../services/api'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Upload, Palette } from 'lucide-react'
+
+const COLOR_PALETTES: { value: string; label: string; colors: string[] }[] = [
+  { value: 'ocean', label: 'Ocean', colors: ['#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'] },
+  { value: 'sunset', label: 'Sunset', colors: ['#ff6b35', '#f7c59f', '#efefd0', '#004e64'] },
+  { value: 'forest', label: 'Forest', colors: ['#2d6a4f', '#40916c', '#74c69d', '#d8f3dc'] },
+  { value: 'berry', label: 'Berry', colors: ['#9d0208', '#d00000', '#dc2f02', '#e85d04'] },
+  { value: 'midnight', label: 'Midnight', colors: ['#03045e', '#0077b6', '#00b4d8', '#90e0ef'] },
+  { value: 'candy', label: 'Candy', colors: ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec'] },
+  { value: 'golden', label: 'Golden', colors: ['#d4af37', '#f4e5c2', '#fefae0', '#dda15e'] },
+  { value: 'monochrome', label: 'Monochrome', colors: ['#000000', '#333333', '#666666', '#cccccc'] },
+]
 
 export default function ProfilePage() {
   const { user } = useAuth()
   const { profile, reload } = useDashboardContext()
-  const [form, setForm] = useState({ displayName: '', bio: '', team: '', company: '', theme: 'default', published: false })
+  const [form, setForm] = useState({ displayName: '', bio: '', team: '', company: '', theme: 'default', published: false, colorPalette: '' as string | null, logoUrl: '' as string | null })
   const [username, setUsername] = useState('')
   const [usernameMsg, setUsernameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [savingUsername, setSavingUsername] = useState(false)
+  const [logoInput, setLogoInput] = useState('')
 
   useEffect(() => {
     if (profile) {
+      const p = profile as unknown as { user?: { displayName: string }; colorPalette?: string | null; logoUrl?: string | null }
       setForm({
-        displayName: (profile as unknown as { user?: { displayName: string } }).user?.displayName || user?.displayName || '',
+        displayName: p.user?.displayName || user?.displayName || '',
         bio: profile.bio || '',
         team: profile.team || '',
         company: profile.company || '',
         theme: profile.theme || 'default',
         published: !!profile.published,
+        colorPalette: p.colorPalette || null,
+        logoUrl: p.logoUrl || null,
       })
     } else if (user) {
       setForm((f) => ({ ...f, displayName: user.displayName || '' }))
@@ -29,11 +44,20 @@ export default function ProfilePage() {
   }, [profile, user])
 
   const saveProfile = async () => {
-    await api.profilePut({ bio: form.bio || null, team: form.team || null, company: form.company || null, theme: form.theme, displayName: form.displayName })
+    await api.profilePut({ bio: form.bio || null, team: form.team || null, company: form.company || null, theme: form.theme, displayName: form.displayName, colorPalette: form.colorPalette, logoUrl: form.logoUrl || null })
     await api.profilePublish(form.published)
     await reload()
     alert('Profile saved')
   }
+
+  const handleLogoSave = () => {
+    if (logoInput.trim()) {
+      setForm({ ...form, logoUrl: logoInput.trim() })
+      setLogoInput('')
+    }
+  }
+
+  const selectedPalette = COLOR_PALETTES.find((p) => p.value === form.colorPalette)
 
   const saveUsername = async () => {
     const clean = username.trim().toLowerCase()
@@ -106,6 +130,51 @@ export default function ProfilePage() {
             <option value="minimal">Minimal</option>
             <option value="gradient">Gradient</option>
           </select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2"><Palette className="h-4 w-4" /> Color Palette (optional)</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {COLOR_PALETTES.map((palette) => (
+              <button
+                key={palette.value}
+                type="button"
+                onClick={() => setForm({ ...form, colorPalette: form.colorPalette === palette.value ? null : palette.value })}
+                className={`rounded-lg border p-2 transition ${form.colorPalette === palette.value ? 'border-primary ring-2 ring-primary/30' : 'hover:border-muted-foreground/50'}`}
+              >
+                <div className="flex gap-1 mb-1.5">
+                  {palette.colors.map((color, i) => (
+                    <div key={i} className="h-4 flex-1 rounded" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+                <span className="text-xs font-medium">{palette.label}</span>
+              </button>
+            ))}
+          </div>
+          {selectedPalette && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Selected:</span>
+              <div className="flex gap-1">
+                {selectedPalette.colors.map((color, i) => (
+                  <div key={i} className="h-3 w-6 rounded" style={{ backgroundColor: color }} />
+                ))}
+              </div>
+              <span className="font-medium">{selectedPalette.label}</span>
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2"><Upload className="h-4 w-4" /> Logo URL (optional)</label>
+          <div className="flex gap-2">
+            <input value={logoInput} onChange={(e) => setLogoInput(e.target.value)} placeholder="https://example.com/logo.png" className="input flex-1" />
+            <button type="button" onClick={handleLogoSave} disabled={!logoInput.trim()} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">Set</button>
+          </div>
+          {form.logoUrl && (
+            <div className="flex items-center gap-3 mt-2 p-2 rounded border bg-muted/30">
+              <img src={form.logoUrl} alt="Logo preview" className="h-12 w-12 object-contain rounded bg-white p-1" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              <span className="text-xs text-muted-foreground truncate flex-1">{form.logoUrl}</span>
+              <button type="button" onClick={() => setForm({ ...form, logoUrl: null })} className="text-xs text-red-600 hover:underline">Remove</button>
+            </div>
+          )}
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Published (visible at /@{user?.username})

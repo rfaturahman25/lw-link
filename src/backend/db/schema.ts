@@ -28,6 +28,8 @@ export const profiles = sqliteTable('profiles', {
   fontFamily: text('font_family').default('system-ui'),
   textAlignment: text('text_alignment', { enum: ['left', 'center', 'right'] }).default('center'),
   avatarShape: text('avatar_shape', { enum: ['circle', 'square', 'rounded'] }).default('circle'),
+  colorPalette: text('color_palette', { enum: ['ocean', 'sunset', 'forest', 'berry', 'midnight', 'candy', 'golden', 'monochrome'] }),
+  logoUrl: text('logo_url'),
   published: integer('published', { mode: 'boolean' }).default(false),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
