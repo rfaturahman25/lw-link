@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { eq, and, asc } from 'drizzle-orm'
 import { zValidator } from '@hono/zod-validator'
 import { createDb } from '../../db/client'
-import { links } from '../../db/schema'
+import { links, sections } from '../../db/schema'
 import { authMiddleware } from '../../middleware/auth'
 import { requirePermission, PERMISSIONS } from '../../middleware/rbac'
 import type { AuthUser } from '../../middleware/auth'
@@ -25,6 +25,11 @@ linksRoutes.post('/', zValidator('json', linkCreateSchema), async (c) => {
   const user = c.get('user') as AuthUser
   const body = c.req.valid('json')
   const db = createDb(c.env.DB)
+  // Validate section ownership if provided
+  if (body.sectionId) {
+    const sec = await db.select().from(sections).where(and(eq(sections.id, body.sectionId), eq(sections.userId, user.id))).limit(1)
+    if (!sec.length) return c.json({ success: false, error: { code: 'INVALID_SECTION', message: 'Invalid section' } }, 400)
+  }
   const existing = await db.select().from(links).where(eq(links.userId, user.id))
   const maxPos = existing.reduce((m, l) => Math.max(m, l.position), 0)
   const id = crypto.randomUUID()
@@ -37,6 +42,7 @@ linksRoutes.post('/', zValidator('json', linkCreateSchema), async (c) => {
     thumbnail: body.thumbnail || null,
     enabled: body.enabled ?? true,
     position: maxPos + 1,
+    sectionId: body.sectionId || null,
   })
   const rows = await db.select().from(links).where(eq(links.id, id)).limit(1)
   return c.json({ success: true, data: rows[0] }, 201)
@@ -63,9 +69,15 @@ linksRoutes.put('/:id', zValidator('json', linkUpdateSchema), async (c) => {
   const id = c.req.param('id')
   const body = c.req.valid('json')
   const db = createDb(c.env.DB)
+  if (body.sectionId) {
+    const sec = await db.select().from(sections).where(and(eq(sections.id, body.sectionId), eq(sections.userId, user.id))).limit(1)
+    if (!sec.length) return c.json({ success: false, error: { code: 'INVALID_SECTION', message: 'Invalid section' } }, 400)
+  }
   const rows = await db.select().from(links).where(and(eq(links.id, id), eq(links.userId, user.id))).limit(1)
   if (rows.length === 0) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Link not found' } }, 404)
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date().toISOString() }
+  // ensure sectionId null handling
+  if (body.sectionId === null) updates.sectionId = null
   await db.update(links).set(updates).where(eq(links.id, id))
   const fresh = await db.select().from(links).where(eq(links.id, id)).limit(1)
   return c.json({ success: true, data: fresh[0] })

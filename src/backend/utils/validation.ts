@@ -37,6 +37,7 @@ export const linkCreateSchema = z.object({
   icon: z.string().max(50).optional().nullable(),
   thumbnail: z.string().url().optional().nullable(),
   enabled: z.boolean().optional().default(true),
+  sectionId: z.string().nullable().optional(),
 })
 
 export const linkUpdateSchema = z.object({
@@ -45,6 +46,7 @@ export const linkUpdateSchema = z.object({
   icon: z.string().max(50).optional().nullable(),
   thumbnail: z.string().url().optional().nullable(),
   enabled: z.boolean().optional(),
+  sectionId: z.string().nullable().optional(),
 })
 
 export const reorderSchema = z.object({

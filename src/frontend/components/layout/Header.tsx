@@ -1,15 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { Home, User, LogIn, LogOut, Shield, Crown } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Home } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const Header = () => {
-  const navigate = useNavigate()
-  const { user, logout } = useAuth()
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-  }
+  const { user } = useAuth()
 
   const homeTarget = user ? '/dashboard' : '/'
   const homeLink = user ? '/dashboard' : '/'
@@ -29,18 +23,7 @@ const Header = () => {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          {user ? (
-            <>
-              <span className="hidden sm:inline text-sm font-medium">{user.username}</span>
-              <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm border hover:bg-accent">
-                <LogOut className="h-4 w-4" /> Logout
-              </button>
-            </>
-          ) : (
-            <Link to="/login" className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-primary text-white hover:bg-primary/90">
-              <LogIn className="h-4 w-4" /> Login
-            </Link>
-          )}
+          <span className="hidden sm:inline text-xs text-muted-foreground">Internal</span>
         </div>
       </div>
     </header>

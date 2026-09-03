@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Github, Linkedin, Twitter, Globe, Mail, Link as LinkIcon, Instagram, Youtube, Facebook, ExternalLink, MessageCircle, FileSpreadsheet, FileText, ShoppingBag, Phone, Image as ImageIcon, Video, Music } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
@@ -29,12 +29,28 @@ const iconMap: Record<string, React.ReactNode> = {
 type ProfileData = {
   user: { username: string; displayName: string; avatarUrl: string | null }
   profile: { bio: string | null; team: string | null; company: string | null; theme?: string; backgroundColor?: string; textColor?: string }
-  links: Array<{ id: string; title: string; url: string; icon: string | null }>
+  links: Array<{ id: string; title: string; url: string; icon: string | null; sectionId: string | null }>
+  sections?: Array<{ id: string; title: string; position: number }>
 }
 
 const PublicProfilePage = () => {
   const { username } = useParams<{ username: string }>()
-  const clean = (username || '').replace(/^@/, '')
+  const navigate = useNavigate()
+  const raw = (() => {
+    try {
+      return decodeURIComponent(username || '')
+    } catch {
+      return username || ''
+    }
+  })()
+  // Handle encoded %40 -> redirect to canonical /@username
+  useEffect(() => {
+    if (username && username.startsWith('%40')) {
+      const canonical = `/@${raw.replace(/^@/, '')}`
+      navigate(canonical, { replace: true })
+    }
+  }, [username, raw, navigate])
+  const clean = raw.replace(/^@/, '').toLowerCase()
   const [data, setData] = useState<ProfileData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -127,27 +143,80 @@ const PublicProfilePage = () => {
         </div>
       </div>
 
-      <div className="space-y-3">
-        {data.links.map((link) => (
-          <a
-            key={link.id}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => api.trackClick(clean, link.id).catch(() => {})}
-            className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{iconMap[link.icon || 'default'] || iconMap.default}</div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-900">{link.title}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
-              </div>
-            </div>
-            <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
-          </a>
-        ))}
-        {data.links.length === 0 && <p className="text-center text-muted-foreground py-8">No links yet</p>}
+      <div className="space-y-6">
+        {(() => {
+          const sections = (data as unknown as { sections?: Array<{ id: string; title: string }> }).sections || []
+          const bySection = new Map<string | null, typeof data.links>()
+          for (const l of data.links) {
+            const key = (l as unknown as { sectionId?: string | null }).sectionId || null
+            if (!bySection.has(key)) bySection.set(key, [])
+            bySection.get(key)!.push(l)
+          }
+          const noSectionLinks = bySection.get(null) || []
+          const hasSections = sections.length > 0
+          if (!hasSections && data.links.length === 0) return <p className="text-center text-muted-foreground py-8">No links yet</p>
+          return (
+            <>
+              {sections.map((sec) => {
+                const secLinks = bySection.get(sec.id) || []
+                if (secLinks.length === 0) return null
+                return (
+                  <div key={sec.id} className="space-y-3">
+                    <h3 className="text-sm font-bold tracking-widest text-muted-foreground uppercase text-center">{sec.title}</h3>
+                    <div className="space-y-3">
+                      {secLinks.map((link) => (
+                        <a
+                          key={link.id}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => api.trackClick(clean, link.id).catch(() => {})}
+                          className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{iconMap[link.icon || 'default'] || iconMap.default}</div>
+                            <div className="text-left">
+                              <p className="font-semibold text-gray-900">{link.title}</p>
+                              <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
+                            </div>
+                          </div>
+                          <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              {noSectionLinks.length > 0 && (
+                <div className="space-y-3">
+                  {hasSections && <h3 className="text-sm font-bold tracking-widest text-muted-foreground uppercase text-center">Links</h3>}
+                  <div className="space-y-3">
+                    {noSectionLinks.map((link) => (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => api.trackClick(clean, link.id).catch(() => {})}
+                        className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{iconMap[link.icon || 'default'] || iconMap.default}</div>
+                          <div className="text-left">
+                            <p className="font-semibold text-gray-900">{link.title}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
+                          </div>
+                        </div>
+                        <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasSections && noSectionLinks.length === 0 && sections.every((s) => (bySection.get(s.id) || []).length === 0) && <p className="text-center text-muted-foreground py-8">No links yet</p>}
+            </>
+          )
+        })()}
       </div>
 
       <div className="card p-6 text-center space-y-3 bg-white">

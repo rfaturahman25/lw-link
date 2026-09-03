@@ -7,6 +7,7 @@ import authRoutes from './api/auth/router'
 import meRoutes from './api/me'
 import profileRoutes from './api/profile/router'
 import linksRoutes from './api/links/router'
+import sectionsRoutes from './api/sections/router'
 import publicRoutes from './api/public/router'
 import analyticsRoutes from './api/analytics/router'
 import adminRoutes from './api/admin/router'
@@ -73,6 +74,7 @@ app.route('/api/auth', authRoutes)
 app.route('/api/me', meRoutes)
 app.route('/api/profile', profileRoutes)
 app.route('/api/links', linksRoutes)
+app.route('/api/sections', sectionsRoutes)
 app.route('/api/public', publicRoutes)
 app.route('/api/analytics', analyticsRoutes)
 app.route('/api/admin', adminRoutes)
@@ -115,23 +117,32 @@ app.notFound(async (c) => {
       404
     )
   }
+  // Handle encoded @ (%40) - redirect to canonical /@username for backward compatibility
+  const rawUrl = new URL(c.req.url)
+  if (rawUrl.pathname.startsWith('/%40')) {
+    const canonical = '/@' + rawUrl.pathname.slice(4) + rawUrl.search + rawUrl.hash
+    return c.redirect(canonical, 301)
+  }
+
   // SPA fallback: serve index.html via assets (for direct URL, refresh, bookmark)
   const assets = (c.env as unknown as { ASSETS?: Fetcher }).ASSETS
   if (assets) {
     try {
-      // Try to fetch the requested asset first (e.g. /assets/*.js)
+      // Try to fetch the requested asset first (e.g. /assets/*.js, /favicon.svg)
       const assetRes = await assets.fetch(c.req.raw)
-      if (assetRes.status !== 404) {
-        // Return mutable response to allow CORS/headers middleware to modify
+      // Only return directly if it's a successful asset (200), not redirect/error
+      if (assetRes.ok) {
         const headers = new Headers(assetRes.headers)
         return new Response(assetRes.body, { status: assetRes.status, statusText: assetRes.statusText, headers })
       }
-      // Fallback to index.html for SPA routes like /login, /dashboard/*, /@username
+      // For 404, fallback to SPA
       const url = new URL(c.req.url)
-      const indexReq = new Request(new URL('/index.html', url).toString(), c.req.raw)
+      const indexReq = new Request(new URL('/index.html', url).toString(), {
+        method: 'GET',
+        headers: { Accept: 'text/html' },
+      })
       const indexRes = await assets.fetch(indexReq)
       if (indexRes.ok) {
-        // Ensure correct content-type for SPA
         const headers = new Headers(indexRes.headers)
         headers.set('Content-Type', 'text/html; charset=utf-8')
         return new Response(indexRes.body, { status: 200, headers })

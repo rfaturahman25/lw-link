@@ -33,9 +33,19 @@ export const profiles = sqliteTable('profiles', {
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 })
 
+export const sections = sqliteTable('sections', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  position: integer('position').notNull().default(0),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+})
+
 export const links = sqliteTable('links', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sectionId: text('section_id').references(() => sections.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   url: text('url').notNull(),
   icon: text('icon'),
@@ -87,6 +97,8 @@ export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Profile = typeof profiles.$inferSelect
 export type NewProfile = typeof profiles.$inferInsert
+export type Section = typeof sections.$inferSelect
+export type NewSection = typeof sections.$inferInsert
 export type Link = typeof links.$inferSelect
 export type NewLink = typeof links.$inferInsert
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { eq, and, desc, sql, count } from 'drizzle-orm'
 import { createDb } from '../../db/client'
-import { users, profiles, links, analyticsEvents } from '../../db/schema'
+import { users, profiles, links, sections, analyticsEvents } from '../../db/schema'
 import { hashIP } from '../../utils/security'
 
 type Bindings = { DB: D1Database }
@@ -9,9 +9,12 @@ type Bindings = { DB: D1Database }
 const publicRoutes = new Hono<{ Bindings: Bindings }>()
 
 publicRoutes.get('/:username', async (c) => {
-  const username = c.req.param('username')
+  let username = c.req.param('username')
+  // handle @ prefix and %40 encoding (canonical /@username)
+  try { username = decodeURIComponent(username) } catch (_e) { /* ignore decode error */ }
+  username = username.replace(/^@/, '').toLowerCase()
   const db = createDb(c.env.DB)
-  const uRows = await db.select().from(users).where(eq(users.username, username.toLowerCase())).limit(1)
+  const uRows = await db.select().from(users).where(eq(users.username, username)).limit(1)
   if (uRows.length === 0) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not found' } }, 404)
   const user = uRows[0]
   if (user.status === 'disabled') return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not found' } }, 404)
@@ -19,20 +22,32 @@ publicRoutes.get('/:username', async (c) => {
   const profile = pRows[0]
   if (!profile || !profile.published) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not published' } }, 404)
   const lRows = await db.select().from(links).where(and(eq(links.userId, user.id), eq(links.enabled, true))).orderBy(links.position)
+  const sRows = await db.select().from(sections).where(eq(sections.userId, user.id)).orderBy(sections.position)
+  // filter out empty sections for public view
+  const linksBySection = new Map<string | null, typeof lRows>()
+  for (const l of lRows) {
+    const key = l.sectionId || null
+    if (!linksBySection.has(key)) linksBySection.set(key, [])
+    linksBySection.get(key)!.push(l)
+  }
+  const visibleSections = sRows.filter((s) => (linksBySection.get(s.id) || []).length > 0)
   return c.json({
     success: true,
     data: {
       user: { id: user.id, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl },
       profile,
       links: lRows,
+      sections: visibleSections,
     },
   })
 })
 
 publicRoutes.post('/:username/view', async (c) => {
-  const username = c.req.param('username')
+  let username = c.req.param('username')
+  try { username = decodeURIComponent(username) } catch (_e) { /* ignore */ }
+  username = username.replace(/^@/, '').toLowerCase()
   const db = createDb(c.env.DB)
-  const uRows = await db.select().from(users).where(eq(users.username, username.toLowerCase())).limit(1)
+  const uRows = await db.select().from(users).where(eq(users.username, username)).limit(1)
   if (uRows.length === 0) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
   const user = uRows[0]
   const pRows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
@@ -52,11 +67,13 @@ publicRoutes.post('/:username/view', async (c) => {
 })
 
 publicRoutes.post('/:username/click', async (c) => {
-  const username = c.req.param('username')
+  let username = c.req.param('username')
+  try { username = decodeURIComponent(username) } catch (_e) { /* ignore */ }
+  username = username.replace(/^@/, '').toLowerCase()
   const { linkId } = await c.req.json().catch(() => ({})) as { linkId?: string }
   if (!linkId) return c.json({ success: false, error: { code: 'MISSING_LINK' } }, 400)
   const db = createDb(c.env.DB)
-  const uRows = await db.select().from(users).where(eq(users.username, username.toLowerCase())).limit(1)
+  const uRows = await db.select().from(users).where(eq(users.username, username)).limit(1)
   if (uRows.length === 0) return c.json({ success: false }, 404)
   const user = uRows[0]
   const lRows = await db.select().from(links).where(eq(links.id, linkId)).limit(1)

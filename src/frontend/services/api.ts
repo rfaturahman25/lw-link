@@ -17,6 +17,7 @@ export const api = {
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   session: () => request('/api/auth/session'),
   me: () => request('/api/me'),
+  meUpdate: (data: { username?: string; displayName?: string; avatarUrl?: string | null }) => request('/api/me', { method: 'PUT', body: JSON.stringify(data) }),
   profileGet: () => request('/api/profile'),
   profilePut: (data: unknown) => request('/api/profile', { method: 'PUT', body: JSON.stringify(data) }),
   profilePublish: (published: boolean) => request('/api/profile/publish', { method: 'PUT', body: JSON.stringify({ published }) }),
@@ -43,6 +44,11 @@ export const api = {
   adminUpdateUserRole: (id: string, role: string) => request(`/api/admin/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
   adminDeleteUser: (id: string) => request(`/api/admin/users/${id}`, { method: 'DELETE' }),
   adminAuditLogs: (limit?: number) => request(`/api/admin/audit-logs${limit ? `?limit=${limit}` : ''}`),
+  sections: () => request('/api/sections'),
+  sectionCreate: (title: string) => request('/api/sections', { method: 'POST', body: JSON.stringify({ title }) }),
+  sectionUpdate: (id: string, title: string) => request(`/api/sections/${id}`, { method: 'PUT', body: JSON.stringify({ title }) }),
+  sectionDelete: (id: string) => request(`/api/sections/${id}`, { method: 'DELETE' }),
+  sectionReorder: (orderedIds: string[]) => request('/api/sections/reorder', { method: 'PUT', body: JSON.stringify({ orderedIds }) }),
 }
 
 export function setSessionToken(token: string) {

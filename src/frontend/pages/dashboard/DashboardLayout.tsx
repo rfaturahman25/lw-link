@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useOutletContext } from 'react-router-dom'
+import { NavLink, Outlet, useOutletContext, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { api } from '../../services/api'
 import { QRCodeSVG } from 'qrcode.react'
 import { Link } from 'react-router-dom'
-import { BarChart3, Link as LinkIcon, User, Shield, Crown, ScrollText, Users } from 'lucide-react'
+import { BarChart3, Link as LinkIcon, User, Shield, Crown, ScrollText, Users, LogOut } from 'lucide-react'
 
 type Profile = { bio: string | null; team: string | null; company: string | null; theme: string; backgroundColor: string; textColor: string; buttonStyle: string; published: boolean; avatarUrl?: string | null; displayName?: string }
-type LinkItem = { id: string; title: string; url: string; icon: string | null; position: number; enabled: boolean }
+type LinkItem = { id: string; title: string; url: string; icon: string | null; position: number; enabled: boolean; sectionId: string | null }
+type Section = { id: string; title: string; position: number }
 
 type DashboardContextType = {
   profile: Profile | null
   links: LinkItem[]
+  sections: Section[]
   analytics: { totalViews: number; totalClicks: number; uniqueVisitors: number; topLinks: Array<{ linkId: string | null; clicks: number; title: string | null; url: string | null; icon: string | null }>; daily: Array<{ date: string; views: number; clicks: number }> } | null
   reload: () => Promise<void>
   setLinks: React.Dispatch<React.SetStateAction<LinkItem[]>>
@@ -28,25 +30,34 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 export default function DashboardLayout() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const isSuper = user?.role === 'super_admin'
   const isAdmin = user?.role === 'admin' || isSuper
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
   const [profile, setProfile] = useState<Profile | null>(null)
   const [links, setLinks] = useState<LinkItem[]>([])
+  const [sections, setSections] = useState<Section[]>([])
   const [analytics, setAnalytics] = useState<DashboardContextType['analytics']>(null)
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
     setLoading(true)
     try {
-      const [pRes, lRes, aRes] = await Promise.all([
+      const [pRes, lRes, sRes, aRes] = await Promise.all([
         api.profileGet() as Promise<{ success: boolean; data: Profile & { user: { displayName: string; avatarUrl: string | null } } }>,
         api.links() as Promise<{ success: boolean; data: LinkItem[] }>,
+        api.sections() as Promise<{ success: boolean; data: Section[] }>,
         api.analytics() as Promise<{ success: boolean; data: DashboardContextType['analytics'] }>,
       ])
       const p = pRes.data
       setProfile(p)
       setLinks(lRes.data || [])
+      setSections(((sRes as unknown as { data: Section[] }).data || []).sort((a, b) => a.position - b.position))
       setAnalytics(aRes.data || null)
     } catch {
       // ignore
@@ -100,6 +111,9 @@ export default function DashboardLayout() {
               <RoleBadge role={user.role} />
             </div>
           )}
+          <button onClick={handleLogout} className="w-full flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent text-left">
+            <LogOut className="h-4 w-4" /> Logout
+          </button>
         </nav>
         <div className="card p-4 text-center space-y-2">
           <p className="font-semibold">Your profile</p>
@@ -115,7 +129,7 @@ export default function DashboardLayout() {
       </aside>
 
       <main className="flex-1 space-y-6">
-        <Outlet context={{ profile, links, analytics, reload: load, setLinks } satisfies DashboardContextType} />
+        <Outlet context={{ profile, links, sections, analytics, reload: load, setLinks } satisfies DashboardContextType} />
       </main>
     </div>
   )
