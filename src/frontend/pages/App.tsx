@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import Layout from '../components/layout/Layout'
 import PublicLayout from '../components/layout/PublicLayout'
 import ProtectedRoute from '../components/ProtectedRoute'
@@ -52,7 +52,7 @@ export default function App() {
         <Route index element={<RootRedirect />} />
         <Route path="login" element={<LoginRoute />} />
         {/* Public profile - separate layout without header/footer */}
-        <Route path="" element={<PublicLayout />}>
+        <Route path="" element={<PublicLayout><Outlet /></PublicLayout>}>
           <Route path=":username" element={<PublicProfilePage />} />
         </Route>
         {/* Dashboard routes */}
