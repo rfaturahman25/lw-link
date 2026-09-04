@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from '../components/layout/Layout'
+import PublicLayout from '../components/layout/PublicLayout'
 import ProtectedRoute from '../components/ProtectedRoute'
 import LoginPage from './auth/LoginPage'
 import PublicProfilePage from './public/PublicProfilePage'
@@ -50,7 +51,11 @@ export default function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<RootRedirect />} />
         <Route path="login" element={<LoginRoute />} />
-        {/* Public profile - keep after dashboard to avoid capturing dashboard */}
+        {/* Public profile - separate layout without header/footer */}
+        <Route path="" element={<PublicLayout />}>
+          <Route path=":username" element={<PublicProfilePage />} />
+        </Route>
+        {/* Dashboard routes */}
         <Route
           path="dashboard"
           element={
@@ -70,7 +75,6 @@ export default function App() {
           <Route path="audit-logs" element={<RequireSuperAdmin><AuditLogsPage /></RequireSuperAdmin>} />
           <Route path="settings" element={<RequireSuperAdmin><div className="card p-8 text-center"><h2 className="text-xl font-bold">Settings</h2><p className="text-sm text-muted-foreground">System configuration — SUPER_ADMIN only (coming soon)</p></div></RequireSuperAdmin>} />
         </Route>
-        <Route path=":username" element={<PublicProfilePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

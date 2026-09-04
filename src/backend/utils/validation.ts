@@ -29,8 +29,8 @@ export const profileUpdateSchema = z.object({
   textAlignment: z.enum(['left', 'center', 'right']).optional(),
   avatarShape: z.enum(['circle', 'square', 'rounded']).optional(),
   colorPalette: z.enum(['ocean', 'sunset', 'forest', 'berry', 'midnight', 'candy', 'golden', 'monochrome']).optional().nullable(),
-  logoUrl: z.string().url().optional().nullable().or(z.literal('')),
-  avatarUrl: z.string().url().optional().nullable().or(z.literal('')),
+  logoUrl: z.string().url().optional().nullable().transform((v) => (v === '' ? null : v)),
+  avatarUrl: z.string().url().optional().nullable().transform((v) => (v === '' ? null : v)),
 })
 
 export const linkCreateSchema = z.object({
