@@ -1,6 +1,3 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
-
 // Minimal layout without header/footer for public profiles
 const PublicLayout: React.FC = () => {
   return (
