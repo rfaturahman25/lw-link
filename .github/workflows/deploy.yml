@@ -26,7 +26,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    # environment: production  # uncomment if you use GitHub Environments with protection
+    environment: production  # uncomment if you use GitHub Environments with protection
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
