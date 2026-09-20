@@ -11,7 +11,26 @@ const imageUrlSchema = z
   .transform((v) => (v === '' ? null : v))
 export const socialPlatformSchema = z.enum(['instagram', 'tiktok', 'threads', 'youtube', 'twitter', 'facebook', 'linkedin', 'github', 'website', 'email', 'phone', 'whatsapp'])
 
-const fontFamilySchema = z.enum(['inter', 'dm-sans', 'poppins', 'manrope', 'plus-jakarta-sans', 'space-grotesk', 'playfair-display'])
+const fontFamilySchema = z.enum([
+  'inter',
+  'dm-sans',
+  'poppins',
+  'manrope',
+  'plus-jakarta-sans',
+  'space-grotesk',
+  'playfair-display',
+  'outfit',
+  'sora',
+  'lexend',
+  'figtree',
+  'urbanist',
+  'bricolage-grotesque',
+  'jetbrains-mono',
+  'space-mono',
+  'silkscreen',
+  'press-start-2p',
+  'vt323',
+])
 const buttonShapeSchema = z.enum(['square', 'rounded', 'pill', 'outlined', 'elevated'])
 
 // Theme system: profiles.theme_config stores { themeId, overrides } as JSON text.
@@ -32,6 +51,7 @@ const themeConfigSchema = z.object({
   overrides: themeOverridesSchema.optional().nullable(),
   showShare: z.boolean().optional(),
   socialStyle: z.enum(['circle', 'plain']).optional(),
+  logoShape: z.enum(['plain', 'circle']).optional(),
 })
 
 export const usernameSchema = z
@@ -47,11 +67,11 @@ export const urlSchema = z
   .refine((v) => {
     try {
       const u = new URL(v)
-      return u.protocol === 'http:' || u.protocol === 'https:'
+      return ['http:', 'https:', 'mailto:', 'tel:', 'sms:'].includes(u.protocol)
     } catch {
       return false
     }
-  }, 'Only http/https URLs allowed')
+  }, 'Only http(s), mailto, tel or sms URLs are allowed')
 
 export const profileUpdateSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
@@ -111,8 +131,11 @@ export const linkCreateSchema = z.object({
   thumbnail: z.string().url().optional().nullable(),
   enabled: z.boolean().optional().default(true),
   sectionId: z.string().nullable().optional(),
-  // Location Smart Link: whether the public profile embeds a map.
+  // Location Smart Link: whether to show the resolved location info block.
   showLocation: z.boolean().optional(),
+  // Whether to show the URL subtitle on the public profile.
+  showUrl: z.boolean().optional(),
+  align: z.enum(['left', 'center', 'right']).optional(),
 })
 
 export const linkUpdateSchema = z.object({
@@ -123,6 +146,8 @@ export const linkUpdateSchema = z.object({
   enabled: z.boolean().optional(),
   sectionId: z.string().nullable().optional(),
   showLocation: z.boolean().optional(),
+  showUrl: z.boolean().optional(),
+  align: z.enum(['left', 'center', 'right']).optional(),
 })
 
 export const reorderSchema = z.object({

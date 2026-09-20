@@ -5,6 +5,7 @@ import { api } from '../../services/api'
 import PublicProfileView from '../../components/profile/PublicProfileView'
 import {
   loadFont,
+  resolveLogoShape,
   resolveProfileTheme,
   resolveShowShare,
   resolveSocialStyle,
@@ -31,6 +32,9 @@ type ProfileData = {
     url: string
     icon: string | null
     sectionId: string | null
+    type?: string | null
+    metadata?: string | null
+    showUrl?: boolean | null
   }>
   sections?: Array<{ id: string; title: string; position: number }>
   socials?: Array<{ platform: string; value: string }>
@@ -165,6 +169,7 @@ const PublicProfilePage = () => {
       theme={theme}
       showShare={resolveShowShare(data.profile)}
       socialStyle={resolveSocialStyle(data.profile)}
+      logoShape={resolveLogoShape(data.profile)}
       interactive
       onLinkClick={(linkId) => api.trackClick(clean, linkId).catch(() => {})}
       onSocialClick={(platform) => api.trackSocialClick(clean, platform).catch(() => {})}

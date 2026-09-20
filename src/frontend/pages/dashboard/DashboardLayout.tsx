@@ -34,6 +34,7 @@ type LinkItem = {
   icon: string | null
   type?: string | null
   metadata?: string | null
+  showUrl?: boolean | null
   position: number
   enabled: boolean
   sectionId: string | null
@@ -63,6 +64,7 @@ type DashboardContextType = {
   } | null
   reload: () => Promise<void>
   setLinks: React.Dispatch<React.SetStateAction<LinkItem[]>>
+  setSections: React.Dispatch<React.SetStateAction<Section[]>>
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -99,7 +101,8 @@ export default function DashboardLayout() {
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
-    setLoading(true)
+    // Only the first load shows the full-screen loading state; later reloads are silent
+    // so actions like toggling a link don't flash the whole dashboard.
     try {
       const [pRes, lRes, sRes, aRes, soRes] = await Promise.all([
         api.profileGet() as Promise<{
@@ -230,6 +233,7 @@ export default function DashboardLayout() {
                 analytics,
                 reload: load,
                 setLinks,
+                setSections,
               } satisfies DashboardContextType
             }
           />

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { themeToCssVars } from '../../themes'
-import type { ResolvedTheme, SocialStyle } from '../../themes'
+import type { LogoShape, ResolvedTheme, SocialStyle } from '../../themes'
 import { socialHref, socialIcon } from './socialMeta'
 import { parseSmartMetadata } from './smartLink'
 
@@ -38,6 +38,8 @@ export type ProfileViewLink = {
   sectionId?: string | null
   type?: string | null
   metadata?: string | null
+  showUrl?: boolean | null
+  align?: string | null
 }
 export type ProfileViewSection = { id: string; title: string; position?: number }
 export type ProfileViewSocial = { platform: string; value: string }
@@ -61,6 +63,7 @@ type Props = {
   socialStyle?: SocialStyle
   headerStyle?: 'classic' | 'hero' | 'banner' | 'shape'
   bannerUrl?: string | null
+  logoShape?: LogoShape
 }
 
 const iconMap: Record<string, ReactNode> = {
@@ -104,6 +107,7 @@ export default function PublicProfileView({
   socialStyle = 'circle',
   headerStyle = 'classic',
   bannerUrl = null,
+  logoShape = 'circle',
 }: Props) {
   const [copied, setCopied] = useState(false)
   const embedded = variant === 'embedded'
@@ -156,17 +160,23 @@ export default function PublicProfileView({
     const locPrimary = loc ? (placeDiffers ? loc.placeName : loc.address || 'Location') : null
     const locSecondary = placeDiffers && loc?.address ? loc.address : null
     const showLoc = !!loc && loc.showLocation !== false
+    const showUrl = link.showUrl !== false
+    const showIcon = link.icon !== 'none'
+    const align =
+      link.align === 'center' ? 'text-center' : link.align === 'right' ? 'text-right' : 'text-left'
 
     const body = (
       <>
-        <div className="flex min-w-0 items-center gap-3.5">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--pp-link-icon-bg)', color: 'var(--pp-link-icon-color)' }}
-          >
-            {iconMap[link.icon || 'default'] || iconMap.default}
-          </div>
-          <div className="min-w-0 text-left">
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">
+          {showIcon && (
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: 'var(--pp-link-icon-bg)', color: 'var(--pp-link-icon-color)' }}
+            >
+              {iconMap[link.icon || 'default'] || iconMap.default}
+            </div>
+          )}
+          <div className={`min-w-0 flex-1 ${align}`}>
             <p
               className="text-[15px] font-semibold leading-tight"
               style={{ color: 'var(--pp-link-text)' }}
@@ -191,11 +201,11 @@ export default function PublicProfileView({
                   </p>
                 )}
               </div>
-            ) : (
+            ) : showUrl ? (
               <p className="mt-1 truncate text-xs" style={{ color: 'var(--pp-link-secondary)' }}>
                 {link.url.replace(/^https?:\/\//, '')}
               </p>
-            )}
+            ) : null}
           </div>
         </div>
         <ExternalLink
@@ -218,18 +228,25 @@ export default function PublicProfileView({
     )
   }
 
-  const logoNode = logoUrl ? (
-    <img
-      src={logoUrl}
-      alt={`${displayName} logo`}
-      className="mx-auto h-12 w-auto max-w-[160px] object-contain opacity-90"
-    />
-  ) : null
+  // The uploaded logo acts as the profile picture: it is shown inside the avatar
+  // circle by default, or as a plain transparent PNG when "Plain (PNG)" is selected.
+  const avatarImage = avatarUrl || logoUrl
+  const plainLogo = !avatarUrl && !!logoUrl && logoShape === 'plain'
 
-  const avatarNode = (
+  const avatarNode = plainLogo ? (
+    <img
+      src={logoUrl as string}
+      alt={displayName}
+      className="mx-auto h-24 w-auto max-w-[200px] object-contain sm:h-28"
+    />
+  ) : (
     <div className="pp-card mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full sm:h-28 sm:w-28">
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+      {avatarImage ? (
+        <img
+          src={avatarImage}
+          alt={displayName}
+          className={`h-full w-full ${avatarUrl ? 'object-cover' : 'object-contain p-1'}`}
+        />
       ) : (
         <span className="text-2xl font-semibold sm:text-3xl" style={{ color: 'var(--pp-text)' }}>
           {displayName.charAt(0).toUpperCase()}
@@ -271,7 +288,6 @@ export default function PublicProfileView({
           {bannerImg('h-28 sm:h-32')}
           <div className="-mt-10 flex justify-center">{avatarNode}</div>
         </div>
-        {logoNode}
         {nameNode}
         {bioNode}
       </>
@@ -282,38 +298,39 @@ export default function PublicProfileView({
           <div className="absolute inset-x-0 -bottom-10 flex justify-center">{avatarNode}</div>
         </div>
         <div className="space-y-3 pt-10">
-          {logoNode}
           {nameNode}
           {bioNode}
         </div>
       </>
     ) : headerStyle === 'shape' ? (
       <>
-        {logoNode}
-        <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28">
-          <div
-            className="absolute inset-0 rotate-6 rounded-[28px]"
-            style={{ background: 'var(--pp-accent-soft)' }}
-          />
-          <div className="pp-card relative flex h-full w-full items-center justify-center overflow-hidden rounded-[24px]">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
-            ) : (
-              <span
-                className="text-2xl font-semibold sm:text-3xl"
-                style={{ color: 'var(--pp-text)' }}
-              >
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            )}
+        {plainLogo ? (
+          avatarNode
+        ) : (
+          <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28">
+            <div
+              className="absolute inset-0 rotate-6 rounded-[28px]"
+              style={{ background: 'var(--pp-accent-soft)' }}
+            />
+            <div className="pp-card relative flex h-full w-full items-center justify-center overflow-hidden rounded-[24px]">
+              {avatarImage ? (
+                <img src={avatarImage} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                <span
+                  className="text-2xl font-semibold sm:text-3xl"
+                  style={{ color: 'var(--pp-text)' }}
+                >
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         {nameNode}
         {bioNode}
       </>
     ) : (
       <>
-        {logoNode}
         {avatarNode}
         {nameNode}
         {bioNode}

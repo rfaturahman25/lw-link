@@ -68,7 +68,7 @@ describe('PublicProfileView social rendering', () => {
           { platform: 'whatsapp', value: '+62 812 3456 7890' },
         ]}
         profileUrl="https://example.com/@jane"
-        theme={resolveTheme({ themeId: 'minimal' })}
+        theme={resolveTheme({ themeId: 'mesh' })}
       />
     )
     expect(screen.getByLabelText(/instagram/i)).toHaveAttribute(
@@ -89,7 +89,7 @@ describe('PublicProfileView social rendering', () => {
         links={[]}
         socials={[{ platform: 'whatsapp', value: '+62 812 3456 7890' }]}
         profileUrl="https://example.com/@jane"
-        theme={resolveTheme({ themeId: 'minimal' })}
+        theme={resolveTheme({ themeId: 'mesh' })}
         socialStyle="plain"
         interactive
         onSocialClick={onSocialClick}
@@ -104,9 +104,9 @@ describe('PublicProfileView social rendering', () => {
 
 describe('resolveSocialStyle', () => {
   it('defaults to circle and reads plain from config', () => {
-    expect(resolveSocialStyle({ themeConfig: JSON.stringify({ themeId: 'minimal' }) })).toBe('circle')
+    expect(resolveSocialStyle({ themeConfig: JSON.stringify({ themeId: 'mesh' }) })).toBe('circle')
     expect(
-      resolveSocialStyle({ themeConfig: JSON.stringify({ themeId: 'minimal', socialStyle: 'plain' }) })
+      resolveSocialStyle({ themeConfig: JSON.stringify({ themeId: 'mesh', socialStyle: 'plain' }) })
     ).toBe('plain')
   })
 })

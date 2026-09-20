@@ -16,19 +16,10 @@ type ThemeInput = {
   cardBlur?: string
 }
 
-const LIGHT = {
-  text: '#0f172a',
-  textSecondary: '#334155',
-  card: '#ffffff',
-  cardOpacity: 1,
-  buttonText: '#ffffff',
-  socialIcon: '#475569',
-}
-
 const LIGHT_EFFECTS = {
   border: 'rgba(15,23,42,0.08)',
-  shadow: '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.06)',
-  shadowHover: '0 10px 24px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06)',
+  shadow: '0 1px 2px rgba(15,23,42,0.04), 0 2px 8px rgba(15,23,42,0.05)',
+  shadowHover: '0 8px 20px rgba(15,23,42,0.10), 0 2px 6px rgba(15,23,42,0.06)',
   cardRadius: '1rem',
 }
 
@@ -38,14 +29,14 @@ function defineTheme(input: ThemeInput): ProfileTheme {
     name: input.name,
     background: input.background,
     colors: {
-      text: input.colors.text ?? LIGHT.text,
-      textSecondary: input.colors.textSecondary ?? LIGHT.textSecondary,
-      card: input.colors.card ?? LIGHT.card,
-      cardOpacity: input.colors.cardOpacity ?? LIGHT.cardOpacity,
+      text: input.colors.text,
+      textSecondary: input.colors.textSecondary,
+      card: input.colors.card,
+      cardOpacity: input.colors.cardOpacity,
       button: input.colors.button,
-      buttonText: input.colors.buttonText ?? LIGHT.buttonText,
+      buttonText: input.colors.buttonText,
       accent: input.colors.accent,
-      socialIcon: input.colors.socialIcon ?? LIGHT.socialIcon,
+      socialIcon: input.colors.socialIcon,
     },
     typography: { fontFamily: input.fontFamily },
     button: { shape: input.shape },
@@ -61,167 +52,189 @@ function defineTheme(input: ThemeInput): ProfileTheme {
   }
 }
 
-const gradient = (top: string, mid: string) =>
-  `linear-gradient(180deg, ${top} 0%, ${mid} 42%, #ffffff 100%)`
+const GRID_PATTERN =
+  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='28'%20height='28'%3E%3Cpath%20d='M28%200H0v28'%20fill='none'%20stroke='%230f172a'%20stroke-opacity='0.06'/%3E%3C/svg%3E\")"
 
-// 12 presets. The first nine ids intentionally match the legacy color_palette values
-// so existing profiles keep rendering the same family after this change.
+const WAVE_PATTERN =
+  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='60'%3E%3Cpath%20d='M0%2030%20Q30%200%2060%2030%20T120%2030'%20fill='none'%20stroke='%23ec4899'%20stroke-opacity='0.25'%20stroke-width='2'/%3E%3Cpath%20d='M0%2048%20Q30%2018%2060%2048%20T120%2048'%20fill='none'%20stroke='%238b5cf6'%20stroke-opacity='0.22'%20stroke-width='2'/%3E%3C/svg%3E\")"
+
+const STARS_PATTERN =
+  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='60'%20height='60'%3E%3Ccircle%20cx='10'%20cy='12'%20r='1'%20fill='white'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='40'%20cy='8'%20r='1.2'%20fill='white'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='28'%20cy='34'%20r='0.9'%20fill='white'%20fill-opacity='0.6'/%3E%3Ccircle%20cx='52'%20cy='44'%20r='1'%20fill='white'%20fill-opacity='0.45'/%3E%3Ccircle%20cx='16'%20cy='50'%20r='0.8'%20fill='white'%20fill-opacity='0.5'/%3E%3C/svg%3E\")"
+
+// Artistic theme collection — backgrounds are CSS/SVG generated (no external assets).
 export const THEMES: ProfileTheme[] = [
   defineTheme({
-    id: 'minimal',
-    name: 'Minimal',
-    background: { color: '#ffffff', image: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)' },
-    colors: { ...LIGHT, button: '#111827', accent: '#111827' },
-    fontFamily: 'inter',
+    id: 'agate',
+    name: 'Agate',
+    // Natural marble: layered light streaks over a deep stone base.
+    background: {
+      color: '#12141a',
+      image:
+        'radial-gradient(120% 90% at 12% 8%, rgba(255,255,255,0.16) 0%, transparent 45%), radial-gradient(90% 120% at 88% 22%, rgba(148,163,184,0.20) 0%, transparent 50%), linear-gradient(160deg, #16181f 0%, #23262f 46%, #0e1015 100%)',
+      size: 'cover',
+    },
+    colors: { text: '#e8eaf0', textSecondary: '#9aa3b2', card: '#1b1e27', cardOpacity: 0.85, button: '#e8eaf0', buttonText: '#12141a', accent: '#cbd5e1', socialIcon: '#cbd5e1' },
+    fontFamily: 'bricolage-grotesque',
     shape: 'rounded',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'ocean',
-    name: 'Ocean',
-    background: { color: '#ffffff', image: gradient('#7dd3fc', '#dbeafe') },
-    colors: { ...LIGHT, button: '#0369a1', accent: '#0369a1' },
-    fontFamily: 'inter',
-    shape: 'rounded',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'sunset',
-    name: 'Sunset',
-    background: { color: '#ffffff', image: gradient('#fdba74', '#ffedd5') },
-    colors: { ...LIGHT, button: '#c2410c', accent: '#c2410c' },
-    fontFamily: 'poppins',
-    shape: 'pill',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'forest',
-    name: 'Forest',
-    background: { color: '#ffffff', image: gradient('#86efac', '#dcfce7') },
-    colors: { ...LIGHT, button: '#15803d', accent: '#15803d' },
-    fontFamily: 'manrope',
-    shape: 'rounded',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'berry',
-    name: 'Berry',
-    background: { color: '#ffffff', image: gradient('#fda4af', '#ffe4e6') },
-    colors: { ...LIGHT, button: '#be123c', accent: '#be123c' },
-    fontFamily: 'poppins',
-    shape: 'pill',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'midnight',
-    name: 'Midnight',
-    background: { color: '#ffffff', image: gradient('#a5b4fc', '#e0e7ff') },
-    colors: { ...LIGHT, button: '#4338ca', accent: '#4338ca' },
-    fontFamily: 'space-grotesk',
-    shape: 'rounded',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'candy',
-    name: 'Candy',
-    background: { color: '#ffffff', image: gradient('#f9a8d4', '#fce7f3') },
-    colors: { ...LIGHT, button: '#be185d', accent: '#be185d' },
-    fontFamily: 'poppins',
-    shape: 'pill',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'golden',
-    name: 'Golden',
-    background: { color: '#ffffff', image: gradient('#fcd34d', '#fef3c7') },
-    colors: { ...LIGHT, button: '#b45309', accent: '#b45309' },
-    fontFamily: 'playfair-display',
-    shape: 'rounded',
-    hover: 'lift',
-  }),
-  defineTheme({
-    id: 'monochrome',
-    name: 'Monochrome',
-    background: { color: '#ffffff', image: gradient('#cbd5e1', '#f1f5f9') },
-    colors: { ...LIGHT, button: '#0f172a', accent: '#0f172a' },
-    fontFamily: 'space-grotesk',
-    shape: 'square',
-    hover: 'lift',
+    hover: 'glow',
+    isDark: true,
+    border: 'rgba(255,255,255,0.14)',
+    shadow: '0 10px 28px rgba(0,0,0,0.5)',
+    shadowHover: '0 14px 34px rgba(0,0,0,0.6)',
+    cardBlur: '6px',
   }),
   defineTheme({
     id: 'aurora',
     name: 'Aurora',
+    // Fluid aurora ribbons of teal, violet and emerald.
     background: {
-      color: '#fdf4ff',
+      color: '#070b14',
       image:
-        'radial-gradient(at 15% 0%, rgba(167,139,250,0.55) 0%, transparent 55%), radial-gradient(at 85% 5%, rgba(34,211,238,0.5) 0%, transparent 55%), radial-gradient(at 50% 30%, rgba(244,114,182,0.35) 0%, transparent 60%)',
+        'radial-gradient(at 15% 18%, rgba(56,189,248,0.50) 0%, transparent 45%), radial-gradient(at 82% 14%, rgba(168,85,247,0.45) 0%, transparent 45%), radial-gradient(at 50% 82%, rgba(16,185,129,0.35) 0%, transparent 52%), linear-gradient(180deg, #070b14 0%, #0b1220 100%)',
       size: 'cover',
     },
-    colors: { ...LIGHT, button: '#7c3aed', accent: '#7c3aed' },
-    fontFamily: 'plus-jakarta-sans',
+    colors: { text: '#eaf2ff', textSecondary: '#9fb0c8', card: '#0f1726', cardOpacity: 0.7, button: '#ffffff', buttonText: '#0b1220', accent: '#67e8f9', socialIcon: '#a5f3fc' },
+    fontFamily: 'sora',
     shape: 'pill',
     hover: 'glow',
-    shadowHover: '0 12px 28px rgba(124,58,237,0.22), 0 2px 8px rgba(124,58,237,0.16)',
+    isDark: true,
+    border: 'rgba(255,255,255,0.16)',
+    shadow: '0 10px 30px rgba(2,6,23,0.55)',
+    shadowHover: '0 0 0 1px rgba(103,232,249,0.35), 0 14px 36px rgba(56,189,248,0.28)',
+    cardBlur: '12px',
   }),
   defineTheme({
-    id: 'neon',
-    name: 'Neon',
+    id: 'bloom',
+    name: 'Bloom',
+    // Abstract wave pattern in soft pink/violet.
+    background: { color: '#fdf2f8', image: WAVE_PATTERN, size: '120px 60px', repeat: 'repeat' },
+    colors: { text: '#3b1d33', textSecondary: '#7c5b73', card: '#ffffff', cardOpacity: 0.82, button: '#9d174d', buttonText: '#ffffff', accent: '#db2777', socialIcon: '#9d174d' },
+    fontFamily: 'outfit',
+    shape: 'pill',
+    hover: 'lift',
+    border: 'rgba(157,23,77,0.14)',
+    cardBlur: '8px',
+  }),
+  defineTheme({
+    id: 'ember',
+    name: 'Ember',
+    // Warm fire glow on a dark base.
     background: {
-      color: '#0b1020',
+      color: '#140806',
       image:
-        "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='32'%20height='32'%3E%3Cpath%20d='M32%200H0v32'%20fill='none'%20stroke='%2322d3ee'%20stroke-opacity='0.14'/%3E%3C/svg%3E\")",
-      size: 'cover, 32px 32px',
-      position: 'center, top left',
-      repeat: 'no-repeat, repeat',
-      overlay: 'radial-gradient(at 50% 0%, rgba(34,211,238,0.18) 0%, transparent 60%)',
+        'radial-gradient(at 50% 0%, rgba(249,115,22,0.38) 0%, transparent 55%), radial-gradient(at 10% 92%, rgba(220,38,38,0.30) 0%, transparent 55%), linear-gradient(180deg, #140806 0%, #1f0d08 100%)',
+      size: 'cover',
     },
-    colors: {
-      text: '#e2e8f0',
-      textSecondary: '#94a3b8',
-      card: '#131a2e',
-      cardOpacity: 0.92,
-      button: '#22d3ee',
-      buttonText: '#04121a',
-      accent: '#22d3ee',
-      socialIcon: '#a5f3fc',
-    },
-    fontFamily: 'space-grotesk',
-    shape: 'elevated',
+    colors: { text: '#ffeee6', textSecondary: '#fdba74', card: '#1f0f0a', cardOpacity: 0.8, button: '#fb923c', buttonText: '#1a0a06', accent: '#f97316', socialIcon: '#fdba74' },
+    fontFamily: 'outfit',
+    shape: 'pill',
     hover: 'glow',
     isDark: true,
-    border: 'rgba(148,163,184,0.25)',
-    shadow: '0 8px 24px rgba(0,0,0,0.45)',
-    shadowHover: '0 0 0 1px rgba(34,211,238,0.4), 0 12px 32px rgba(34,211,238,0.25)',
+    border: 'rgba(249,115,22,0.28)',
+    shadow: '0 10px 28px rgba(0,0,0,0.5)',
+    shadowHover: '0 0 0 1px rgba(251,146,60,0.45), 0 14px 34px rgba(249,115,22,0.35)',
+    cardBlur: '8px',
   }),
   defineTheme({
-    id: 'glass',
-    name: 'Glass',
-    background: {
-      color: '#eef2ff',
-      image: 'linear-gradient(160deg, #dbeafe 0%, #fae8ff 45%, #e0f2fe 100%)',
-    },
-    colors: {
-      text: '#0f172a',
-      textSecondary: '#334155',
-      card: '#ffffff',
-      cardOpacity: 0.55,
-      button: '#7c3aed',
-      buttonText: '#ffffff',
-      accent: '#7c3aed',
-      socialIcon: '#4c1d95',
-    },
+    id: 'grid',
+    name: 'Grid',
+    background: { color: '#ffffff', image: GRID_PATTERN, size: '28px 28px', repeat: 'repeat' },
+    colors: { text: '#0f172a', textSecondary: '#64748b', card: '#ffffff', cardOpacity: 1, button: '#111827', buttonText: '#ffffff', accent: '#2563eb', socialIcon: '#475569' },
     fontFamily: 'dm-sans',
-    shape: 'outlined',
+    shape: 'rounded',
     hover: 'lift',
-    border: 'rgba(255,255,255,0.65)',
-    shadow: '0 8px 32px rgba(31,41,55,0.12)',
-    shadowHover: '0 14px 40px rgba(31,41,55,0.18)',
-    cardRadius: '1.25rem',
-    cardBlur: '14px',
+    border: 'rgba(15,23,42,0.10)',
+  }),
+  defineTheme({
+    id: 'mesh',
+    name: 'Mesh',
+    background: {
+      color: '#f8f7ff',
+      image:
+        'radial-gradient(at 12% 8%, rgba(129,140,248,0.35) 0%, transparent 50%), radial-gradient(at 88% 6%, rgba(56,189,248,0.32) 0%, transparent 50%), radial-gradient(at 50% 40%, rgba(244,114,182,0.22) 0%, transparent 55%)',
+      size: 'cover',
+    },
+    colors: { text: '#111827', textSecondary: '#64748b', card: '#ffffff', cardOpacity: 0.85, button: '#ffffff', buttonText: '#111827', accent: '#6366f1', socialIcon: '#64748b' },
+    fontFamily: 'plus-jakarta-sans',
+    shape: 'rounded',
+    hover: 'lift',
+    border: 'rgba(17,24,39,0.10)',
+    cardBlur: '10px',
+  }),
+  defineTheme({
+    id: 'nebula',
+    name: 'Nebula',
+    // Cosmic clouds of violet, pink and blue.
+    background: {
+      color: '#080616',
+      image:
+        'radial-gradient(at 25% 15%, rgba(139,92,246,0.42) 0%, transparent 50%), radial-gradient(at 82% 20%, rgba(236,72,153,0.32) 0%, transparent 50%), radial-gradient(at 50% 86%, rgba(59,130,246,0.30) 0%, transparent 55%), linear-gradient(180deg, #080616 0%, #0d0a22 100%)',
+      size: 'cover',
+    },
+    colors: { text: '#ecebff', textSecondary: '#c4b5fd', card: '#140f2e', cardOpacity: 0.8, button: '#a78bfa', buttonText: '#0b0820', accent: '#a78bfa', socialIcon: '#ddd6fe' },
+    fontFamily: 'sora',
+    shape: 'rounded',
+    hover: 'glow',
+    isDark: true,
+    border: 'rgba(167,139,250,0.28)',
+    shadow: '0 10px 30px rgba(2,6,23,0.55)',
+    shadowHover: '0 0 0 1px rgba(167,139,250,0.45), 0 14px 36px rgba(139,92,246,0.35)',
+    cardBlur: '10px',
+  }),
+  defineTheme({
+    id: 'opal',
+    name: 'Opal',
+    // Iridescent pearl light with soft prism tints.
+    background: {
+      color: '#f7f5ff',
+      image:
+        'radial-gradient(at 20% 10%, rgba(186,230,253,0.55) 0%, transparent 45%), radial-gradient(at 80% 15%, rgba(251,207,232,0.50) 0%, transparent 45%), radial-gradient(at 50% 82%, rgba(221,214,254,0.50) 0%, transparent 55%), linear-gradient(160deg, #f7f5ff 0%, #ffffff 100%)',
+      size: 'cover',
+    },
+    colors: { text: '#2a2340', textSecondary: '#6b6480', card: '#ffffff', cardOpacity: 0.75, button: '#7c3aed', buttonText: '#ffffff', accent: '#8b5cf6', socialIcon: '#6d28d9' },
+    fontFamily: 'urbanist',
+    shape: 'rounded',
+    hover: 'lift',
+    border: 'rgba(124,58,237,0.16)',
+    cardBlur: '10px',
+  }),
+  defineTheme({
+    id: 'stardust',
+    name: 'Stardust',
+    // Star field over deep navy with a soft glow.
+    background: {
+      color: '#0a0e1a',
+      image: STARS_PATTERN,
+      size: 'cover, 60px 60px',
+      position: 'center, top left',
+      repeat: 'no-repeat, repeat',
+      overlay: 'radial-gradient(at 50% 0%, rgba(129,140,248,0.28) 0%, transparent 60%)',
+    },
+    colors: { text: '#e6e9ff', textSecondary: '#a5b4fc', card: '#131a2e', cardOpacity: 0.85, button: '#e0e7ff', buttonText: '#0a0e1a', accent: '#818cf8', socialIcon: '#c7d2fe' },
+    fontFamily: 'lexend',
+    shape: 'rounded',
+    hover: 'glow',
+    isDark: true,
+    border: 'rgba(255,255,255,0.14)',
+    shadow: '0 10px 28px rgba(0,0,0,0.5)',
+    shadowHover: '0 0 0 1px rgba(129,140,248,0.4), 0 14px 34px rgba(99,102,241,0.3)',
+    cardBlur: '6px',
   }),
 ]
 
-export const DEFAULT_THEME_ID = 'minimal'
+export const DEFAULT_THEME_ID = 'mesh'
+
+// Legacy color_palette values no longer exist as themes; map each to a surviving preset.
+export const LEGACY_PALETTE_MAP: Record<string, string> = {
+  ocean: 'aurora',
+  sunset: 'ember',
+  forest: 'agate',
+  berry: 'bloom',
+  midnight: 'nebula',
+  candy: 'opal',
+  golden: 'ember',
+  monochrome: 'grid',
+}
 
 export const THEME_MAP: Record<string, ProfileTheme> = THEMES.reduce(
   (acc, t) => ({ ...acc, [t.id]: t }),
@@ -229,5 +242,6 @@ export const THEME_MAP: Record<string, ProfileTheme> = THEMES.reduce(
 )
 
 export function getThemeById(id: string | undefined | null): ProfileTheme | undefined {
-  return id ? THEME_MAP[id] : undefined
+  if (!id) return undefined
+  return THEME_MAP[id] ?? THEME_MAP[LEGACY_PALETTE_MAP[id]]
 }

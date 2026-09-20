@@ -6,6 +6,17 @@ export type ProfileFont =
   | 'plus-jakarta-sans'
   | 'space-grotesk'
   | 'playfair-display'
+  | 'outfit'
+  | 'sora'
+  | 'lexend'
+  | 'figtree'
+  | 'urbanist'
+  | 'bricolage-grotesque'
+  | 'jetbrains-mono'
+  | 'space-mono'
+  | 'silkscreen'
+  | 'press-start-2p'
+  | 'vt323'
 
 export type ThemeButtonShape = 'square' | 'rounded' | 'pill' | 'outlined' | 'elevated'
 
@@ -65,12 +76,14 @@ export type ThemeOverrides = {
 // Persisted shape inside profiles.theme_config (JSON text). No schema change required.
 // showShare controls whether the public profile renders the share/QR block.
 export type SocialStyle = 'circle' | 'plain'
+export type LogoShape = 'plain' | 'circle'
 
 export type StoredThemeConfig = {
   themeId: string
   overrides?: ThemeOverrides | null
   showShare?: boolean
   socialStyle?: SocialStyle
+  logoShape?: LogoShape
 }
 
 export type ResolvedTheme = ProfileTheme

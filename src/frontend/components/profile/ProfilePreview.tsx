@@ -4,7 +4,7 @@ import type {
   ProfileViewSection,
   ProfileViewSocial,
 } from './PublicProfileView'
-import type { ResolvedTheme, SocialStyle } from '../../themes'
+import type { LogoShape, ResolvedTheme, SocialStyle } from '../../themes'
 
 type Props = {
   theme: ResolvedTheme
@@ -20,6 +20,7 @@ type Props = {
   socialStyle?: SocialStyle
   headerStyle?: 'classic' | 'hero' | 'banner' | 'shape'
   bannerUrl?: string | null
+  logoShape?: LogoShape
 }
 
 export default function ProfilePreview(props: Props) {

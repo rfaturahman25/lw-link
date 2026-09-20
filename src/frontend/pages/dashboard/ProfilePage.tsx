@@ -288,6 +288,99 @@ export default function ProfilePage() {
             </p>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Upload className="h-4 w-4" /> Logo (optional)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <input
+                value={logoInput}
+                onChange={(e) => setLogoInput(e.target.value)}
+                placeholder="https://example.com/logo.png"
+                className="input min-w-[180px] flex-1"
+              />
+              <button
+                type="button"
+                onClick={handleLogoSave}
+                disabled={!logoInput.trim()}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                Set
+              </button>
+              <label
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
+                  uploadingLogo ? 'opacity-50' : 'hover:bg-accent'
+                }`}
+              >
+                {uploadingLogo ? 'Uploading…' : 'Upload'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  disabled={uploadingLogo}
+                  onChange={(e) => handleImageUpload(e, 'logoUrl')}
+                />
+              </label>
+            </div>
+            {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+            {form.logoUrl && (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">
+                <img
+                  src={form.logoUrl}
+                  alt="Logo preview"
+                  className="h-14 w-14 object-contain"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium">Logo shape</p>
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          themeConfig: { ...f.themeConfig, logoShape: 'plain' },
+                        }))
+                      }
+                      aria-pressed={(form.themeConfig.logoShape ?? 'circle') === 'plain'}
+                      className={`rounded-md border px-3 py-1.5 text-xs ${
+                        (form.themeConfig.logoShape ?? 'circle') === 'plain'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'hover:bg-accent'
+                      }`}
+                    >
+                      Plain (PNG)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          themeConfig: { ...f.themeConfig, logoShape: 'circle' },
+                        }))
+                      }
+                      aria-pressed={(form.themeConfig.logoShape ?? 'circle') === 'circle'}
+                      className={`rounded-md border px-3 py-1.5 text-xs ${
+                        (form.themeConfig.logoShape ?? 'circle') === 'circle'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'hover:bg-accent'
+                      }`}
+                    >
+                      Circle
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, logoUrl: null })}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-sm font-medium">Display name</label>
@@ -459,63 +552,6 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Upload className="h-4 w-4" /> Logo (optional)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={logoInput}
-                onChange={(e) => setLogoInput(e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className="input min-w-[180px] flex-1"
-              />
-              <button
-                type="button"
-                onClick={handleLogoSave}
-                disabled={!logoInput.trim()}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                Set
-              </button>
-              <label
-                className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
-                  uploadingLogo ? 'opacity-50' : 'hover:bg-accent'
-                }`}
-              >
-                {uploadingLogo ? 'Uploading…' : 'Upload'}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="hidden"
-                  disabled={uploadingLogo}
-                  onChange={(e) => handleImageUpload(e, 'logoUrl')}
-                />
-              </label>
-            </div>
-            {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
-            {form.logoUrl && (
-              <div className="flex items-center gap-3 mt-2 p-2 rounded border bg-muted/30">
-                <img
-                  src={form.logoUrl}
-                  alt="Logo preview"
-                  className="h-12 w-12 object-contain rounded bg-white p-1"
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
-                />
-                <span className="text-xs text-muted-foreground truncate flex-1">
-                  {form.logoUrl}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, logoUrl: null })}
-                  className="text-xs text-red-600 hover:underline"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-
           {saveMsg && (
             <p className={`text-sm ${saveMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
               {saveMsg.text}
@@ -554,6 +590,7 @@ export default function ProfilePage() {
             socialStyle={form.themeConfig.socialStyle === 'plain' ? 'plain' : 'circle'}
             headerStyle={form.headerStyle}
             bannerUrl={form.bannerUrl}
+            logoShape={form.themeConfig.logoShape ?? 'circle'}
           />
         </aside>
       </div>

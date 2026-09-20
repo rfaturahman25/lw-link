@@ -3,8 +3,13 @@ import { useDashboardContext } from './DashboardLayout'
 import { api } from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import ProfilePreview from '../../components/profile/ProfilePreview'
-import { resolveProfileTheme, resolveShowShare, resolveSocialStyle } from '../../themes'
-import { WhatsAppIcon } from '../../components/icons/BrandIcons'
+import {
+  resolveLogoShape,
+  resolveProfileTheme,
+  resolveShowShare,
+  resolveSocialStyle,
+} from '../../themes'
+import { WhatsAppIcon, XIcon } from '../../components/icons/BrandIcons'
 import { isMapsUrl, parseSmartMetadata } from '../../components/profile/smartLink'
 import {
   DndContext,
@@ -13,6 +18,7 @@ import {
   useSensor,
   useSensors,
   KeyboardSensor,
+  useDroppable,
   DragEndEvent,
 } from '@dnd-kit/core'
 import {
@@ -27,7 +33,6 @@ import {
   GripVertical,
   Github,
   Linkedin,
-  Twitter,
   Globe,
   Mail,
   Instagram,
@@ -47,10 +52,13 @@ import {
   MoreVertical,
   Folder,
   MapPin,
+  Headphones,
+  Ban,
 } from 'lucide-react'
 
 const ICON_OPTIONS = [
   { value: 'link', label: 'Link', icon: LinkIcon },
+  { value: 'none', label: 'No icon', icon: Ban },
   { value: 'instagram', label: 'Instagram', icon: Instagram },
   { value: 'whatsapp', label: 'WhatsApp', icon: WhatsAppIcon },
   { value: 'sheet', label: 'Google Sheet', icon: FileSpreadsheet },
@@ -59,10 +67,11 @@ const ICON_OPTIONS = [
   { value: 'tiktok', label: 'TikTok', icon: Music },
   { value: 'github', label: 'GitHub', icon: Github },
   { value: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-  { value: 'twitter', label: 'Twitter', icon: Twitter },
+  { value: 'twitter', label: 'X', icon: XIcon },
   { value: 'facebook', label: 'Facebook', icon: Facebook },
   { value: 'mail', label: 'Email', icon: Mail },
   { value: 'phone', label: 'Phone', icon: Phone },
+  { value: 'call', label: 'Call Center', icon: Headphones },
   { value: 'file', label: 'File', icon: FileText },
   { value: 'shop', label: 'Shop', icon: ShoppingBag },
   { value: 'image', label: 'Image', icon: ImageIcon },
@@ -72,7 +81,8 @@ const ICON_OPTIONS = [
 const iconMap: Record<string, React.ReactNode> = {
   github: <Github className="h-5 w-5" />,
   linkedin: <Linkedin className="h-5 w-5" />,
-  twitter: <Twitter className="h-5 w-5" />,
+  twitter: <XIcon className="h-5 w-5" />,
+  call: <Headphones className="h-5 w-5" />,
   globe: <Globe className="h-5 w-5" />,
   mail: <Mail className="h-5 w-5" />,
   instagram: <Instagram className="h-5 w-5" />,
@@ -89,6 +99,24 @@ const iconMap: Record<string, React.ReactNode> = {
   music: <Music className="h-5 w-5" />,
   tiktok: <Music className="h-5 w-5" />,
   default: <LinkIcon className="h-5 w-5" />,
+}
+
+// Drop target for a section (or the unsectioned group) so links can be dragged across sections.
+function Droppable({
+  id,
+  sectionId,
+  children,
+}: {
+  id: string
+  sectionId: string | null
+  children: React.ReactNode
+}) {
+  const { setNodeRef } = useDroppable({ id, data: { type: 'container', sectionId } })
+  return (
+    <div ref={setNodeRef} className="min-h-[8px]">
+      {children}
+    </div>
+  )
 }
 
 function SortableLinkItem({
@@ -113,6 +141,7 @@ function SortableLinkItem({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: link.id,
+    data: { type: 'link', sectionId: link.sectionId ?? null },
   })
   const locMeta = link.type === 'location' ? parseSmartMetadata(link) : null
   const subtitle = locMeta
@@ -137,9 +166,11 @@ function SortableLinkItem({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-        {iconMap[link.icon || 'link'] || iconMap.default}
-      </div>
+      {link.icon !== 'none' && (
+        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+          {iconMap[link.icon || 'link'] || iconMap.default}
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           {link.type === 'location' && (
@@ -193,6 +224,7 @@ function SortableSection({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
+    data: { type: 'section' },
   })
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -260,15 +292,17 @@ function SortableSection({
 }
 
 export default function LinksPage() {
-  const { links, sections, socials, profile, reload, setLinks } =
+  const { links, sections, socials, profile, reload, setLinks, setSections } =
     useDashboardContext() as unknown as {
       links: Array<{
         id: string
         title: string
         url: string
         icon: string | null
+        align?: string | null
         type?: string | null
         metadata?: string | null
+        showUrl?: boolean | null
         enabled: boolean
         sectionId: string | null
         position: number
@@ -288,6 +322,7 @@ export default function LinksPage() {
       } | null
       reload: () => Promise<void>
       setLinks: React.Dispatch<React.SetStateAction<any[]>>
+      setSections: React.Dispatch<React.SetStateAction<Array<{ id: string; title: string; position: number }>>>
     }
   const { user } = useAuth()
   const previewTheme = useMemo(() => resolveProfileTheme(profile), [profile])
@@ -312,6 +347,7 @@ export default function LinksPage() {
         socialStyle={resolveSocialStyle(profile)}
         headerStyle={(profile?.headerStyle as 'classic' | 'hero' | 'banner' | 'shape') ?? 'classic'}
         bannerUrl={profile?.bannerUrl ?? null}
+        logoShape={resolveLogoShape(profile)}
       />
     ),
     [previewTheme, profile, user, links, sections, socials, previewUrl]
@@ -321,8 +357,10 @@ export default function LinksPage() {
     title: '',
     url: '',
     icon: 'link',
+    align: 'left' as 'left' | 'center' | 'right',
     sectionId: '' as string,
     showLocation: true,
+    showUrl: true,
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newSectionTitle, setNewSectionTitle] = useState('')
@@ -352,14 +390,6 @@ export default function LinksPage() {
         )
       }),
     [linkForm.icon]
-  )
-
-  const sectionSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-  const linkSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   )
 
   const sensors = useSensors(
@@ -402,26 +432,13 @@ export default function LinksPage() {
     await reload()
   }
 
-  const handleSectionReorder = async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIndex = sections.findIndex((s) => s.id === active.id)
-    const newIndex = sections.findIndex((s) => s.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-    const newOrder = arrayMove(sections, oldIndex, newIndex)
-    // optimistic
-    // need to update via API
-    await api.sectionReorder(newOrder.map((s) => s.id))
-    await reload()
-  }
-
   const validateLink = () => {
     const errs: { title?: string; url?: string } = {}
     if (!linkForm.title.trim()) errs.title = 'Title is required.'
     const url = linkForm.url.trim()
     if (!url) errs.url = 'URL is required.'
-    else if (!/^https?:\/\/.+/i.test(url))
-      errs.url = 'URL must start with http:// or https:// (example: https://example.com).'
+    else if (!/^(https?:\/\/|mailto:|tel:|sms:).+/i.test(url))
+      errs.url = 'URL must start with http://, https://, mailto:, tel: or sms:'
     setLinkErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -437,6 +454,8 @@ export default function LinksPage() {
       sectionId: linkForm.sectionId || null,
     }
     if (isMapsUrl(linkForm.url)) payload.showLocation = linkForm.showLocation
+    payload.showUrl = linkForm.showUrl
+    payload.align = linkForm.align
     try {
       if (editingId) {
         await api.linkUpdate(editingId, payload)
@@ -444,7 +463,7 @@ export default function LinksPage() {
       } else {
         await api.linkCreate(payload)
       }
-      setLinkForm({ title: '', url: '', icon: 'link', sectionId: '', showLocation: true })
+      setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true })
       setLinkErrors({})
       await reload()
     } catch (err: unknown) {
@@ -455,8 +474,14 @@ export default function LinksPage() {
   }
 
   const toggleLink = async (id: string) => {
-    await api.linkToggle(id)
-    await reload()
+    const prev = links
+    // Optimistic: update the list + preview instantly, no full dashboard reload.
+    setLinks((cur) => cur.map((l) => (l.id === id ? { ...l, enabled: !l.enabled } : l)))
+    try {
+      await api.linkToggle(id)
+    } catch {
+      setLinks(prev)
+    }
   }
   const deleteLink = async (id: string) => {
     if (!confirm('Delete link? This cannot be undone.')) return
@@ -464,51 +489,108 @@ export default function LinksPage() {
     await reload()
   }
 
-  const handleLinkDragEnd = async (event: DragEndEvent, sectionId: string | null) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    // only reorder within same section
-    const sectionLinks = links
-      .filter((l) => l.sectionId === sectionId)
+  const groupOf = (key: string | null) =>
+    links
+      .filter((l) => (l.sectionId ?? null) === key)
       .sort((a, b) => a.position - b.position)
-    const oldIndex = sectionLinks.findIndex((l) => l.id === active.id)
-    const newIndex = sectionLinks.findIndex((l) => l.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-    const newOrder = arrayMove(sectionLinks, oldIndex, newIndex)
-    // For simplicity, reorder globally by section groups: keep section order, then link order within section
-    // Build global orderedIds: sections in order, each with its links in new order, plus No Section at end
-    const grouped: Record<string, typeof links> = {}
-    for (const l of links) {
-      const key = l.sectionId || '__none__'
-      if (!grouped[key]) grouped[key] = []
-      grouped[key].push(l)
-    }
-    // update the moved section's group
-    grouped[sectionId || '__none__'] = newOrder
-    const orderedIds: string[] = []
-    for (const sec of sections) {
-      const g = grouped[sec.id] || []
-      for (const l of g.sort((a, b) => a.position - b.position)) orderedIds.push(l.id)
-    }
-    const noneGroup = grouped['__none__'] || []
-    // if moving within No Section, use newOrder, else use existing noneGroup
-    const noneToUse = sectionId === null ? newOrder : noneGroup
-    for (const l of noneToUse.sort((a, b) => a.position - b.position))
-      if (!orderedIds.includes(l.id)) orderedIds.push(l.id)
-    // include any remaining links not in groups (should not happen)
-    for (const l of links) if (!orderedIds.includes(l.id)) orderedIds.push(l.id)
 
-    // optimistic update
-    const updatedLinks = links.map((l) => {
-      const idx = newOrder.findIndex((x) => x.id === l.id)
-      if (idx !== -1) return { ...l, position: idx + 1 }
-      return l
-    })
-    setLinks(updatedLinks as never)
+  // Build the full ordered id list from per-container overrides (key = sectionId | '__none__').
+  const buildOrderedIds = (overrides: Map<string, string[]>) => {
+    const ids: string[] = []
+    for (const sec of [...sections].sort((a, b) => a.position - b.position)) {
+      ids.push(...(overrides.get(sec.id) ?? groupOf(sec.id).map((l) => l.id)))
+    }
+    ids.push(...(overrides.get('__none__') ?? groupOf(null).map((l) => l.id)))
+    for (const l of links) if (!ids.includes(l.id)) ids.push(l.id)
+    return ids
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) return
+    const activeData = active.data.current as
+      | { type?: string; sectionId?: string | null }
+      | undefined
+    const overData = over.data.current as
+      | { type?: string; sectionId?: string | null }
+      | undefined
+
+    // --- Section reorder ---
+    if (activeData?.type === 'section') {
+      if (String(active.id) === String(over.id)) return
+      const targetId =
+        overData?.type === 'section'
+          ? String(over.id)
+          : overData?.type === 'link' || overData?.type === 'container'
+            ? (overData.sectionId ?? null)
+            : null
+      if (!targetId) return
+      const oldIndex = sections.findIndex((s) => s.id === active.id)
+      const newIndex = sections.findIndex((s) => s.id === targetId)
+      if (oldIndex === -1 || newIndex === -1) return
+      const newOrder = arrayMove(sections, oldIndex, newIndex)
+      setSections(newOrder)
+      try {
+        await api.sectionReorder(newOrder.map((s) => s.id))
+      } catch {
+        await reload()
+      }
+      return
+    }
+
+    // --- Link reorder (within or across sections) ---
+    const linkId = String(active.id)
+    const sourceSection = activeData?.sectionId ?? null
+    let targetSection: string | null = sourceSection
+    if (overData?.type === 'link' || overData?.type === 'container') {
+      targetSection = overData.sectionId ?? null
+    } else if (overData?.type === 'section') {
+      targetSection = String(over.id)
+    }
+    if (String(active.id) === String(over.id) && targetSection === sourceSection) return
+
+    const source = groupOf(sourceSection)
+    const oldIndex = source.findIndex((l) => l.id === linkId)
+    if (oldIndex === -1) return
+
+    const keyOf = (k: string | null) => k ?? '__none__'
+    const overrides = new Map<string, string[]>()
+    let sectionChanged = false
+
+    if (targetSection === sourceSection) {
+      const newIndex =
+        overData?.type === 'link' ? source.findIndex((l) => l.id === over.id) : source.length - 1
+      if (newIndex === -1 || newIndex === oldIndex) return
+      overrides.set(keyOf(sourceSection), arrayMove(source, oldIndex, newIndex).map((l) => l.id))
+    } else {
+      const target = groupOf(targetSection)
+      const insertAt =
+        overData?.type === 'link'
+          ? Math.max(0, target.findIndex((l) => l.id === over.id))
+          : target.length
+      const moved = source[oldIndex]
+      const newTarget = [...target]
+      newTarget.splice(insertAt, 0, moved)
+      overrides.set(keyOf(sourceSection), source.filter((l) => l.id !== linkId).map((l) => l.id))
+      overrides.set(keyOf(targetSection), newTarget.map((l) => l.id))
+      sectionChanged = true
+    }
+
+    const orderedIds = buildOrderedIds(overrides)
+    const posById = new Map(orderedIds.map((id, i) => [id, i + 1]))
+    const prev = links
+    setLinks((cur) =>
+      cur.map((l) => ({
+        ...l,
+        position: posById.get(l.id) ?? l.position,
+        ...(l.id === linkId && sectionChanged ? { sectionId: targetSection } : {}),
+      }))
+    )
     try {
+      if (sectionChanged) await api.linkUpdate(linkId, { sectionId: targetSection })
       await api.linkReorder(orderedIds)
     } catch {
-      await reload()
+      setLinks(prev)
     }
   }
 
@@ -641,6 +723,36 @@ export default function LinksPage() {
             )}
           </div>
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={linkForm.showUrl}
+            onChange={(e) => setLinkForm({ ...linkForm, showUrl: e.target.checked })}
+          />
+          Show URL on the profile
+        </label>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Text alignment</label>
+          <div className="flex gap-2">
+            {(['left', 'center', 'right'] as const).map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setLinkForm({ ...linkForm, align: a })}
+                aria-pressed={linkForm.align === a}
+                className={`flex-1 rounded-md border px-3 py-2 text-xs capitalize ${
+                  linkForm.align === a
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'hover:bg-accent'
+                }`}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="space-y-2">
           <label className="text-sm font-medium">Section</label>
           <select
@@ -679,7 +791,7 @@ export default function LinksPage() {
               type="button"
               onClick={() => {
                 setEditingId(null)
-                setLinkForm({ title: '', url: '', icon: 'link', sectionId: '', showLocation: true })
+                setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true })
                 setLinkErrors({})
               }}
               className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
@@ -693,82 +805,72 @@ export default function LinksPage() {
         </p>
       </form>
 
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       {/* Sections */}
-      {hasSections ? (
-        <DndContext
-          sensors={sectionSensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleSectionReorder}
-        >
-          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-4">
-              {sections.map((sec) => {
-                const secLinks = links
-                  .filter((l) => l.sectionId === sec.id)
-                  .sort((a, b) => a.position - b.position)
-                return (
-                  <SortableSection
-                    key={sec.id}
-                    section={sec}
-                    onEdit={handleEditSection}
-                    onDelete={handleDeleteSection}
-                  >
-                    {secLinks.length === 0 ? (
-                      <div className="text-center py-4 space-y-2 border-2 border-dashed rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          No links in this section yet.
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Use the form above and select "{sec.title}" as section.
-                        </p>
-                      </div>
-                    ) : (
-                      <DndContext
-                        sensors={linkSensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(e) => handleLinkDragEnd(e, sec.id)}
-                      >
-                        <SortableContext
-                          items={secLinks.map((l) => l.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-2">
-                            {secLinks.map((l) => (
-                              <SortableLinkItem
-                                key={l.id}
-                                link={l as never}
-                                onEdit={() => {
-                                  setEditingId(l.id)
-                                  setLinkForm({
-                                    title: l.title,
-                                    url: l.url,
-                                    icon: l.icon || 'link',
-                                    sectionId: l.sectionId || '',
-                                    showLocation: parseSmartMetadata(l)?.showLocation ?? true,
-                                  })
-                                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                                }}
-                                onToggle={() => toggleLink(l.id)}
-                                onDelete={() => deleteLink(l.id)}
-                              />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    )}
-                    {secLinks.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {secLinks.length} link{secLinks.length !== 1 ? 's' : ''} • Drag to reorder
-                        within section
-                      </p>
-                    )}
-                  </SortableSection>
-                )
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
-      ) : hasLinks ? null : null}
+      {hasSections && (
+        <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-4">
+            {sections.map((sec) => {
+              const secLinks = links
+                .filter((l) => l.sectionId === sec.id)
+                .sort((a, b) => a.position - b.position)
+              return (
+                <SortableSection
+                  key={sec.id}
+                  section={sec}
+                  onEdit={handleEditSection}
+                  onDelete={handleDeleteSection}
+                >
+                  <Droppable id={`container:${sec.id}`} sectionId={sec.id}>
+                    <SortableContext
+                      items={secLinks.map((l) => l.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {secLinks.length === 0 ? (
+                        <div className="text-center py-4 space-y-2 border-2 border-dashed rounded-lg">
+                          <p className="text-sm text-muted-foreground">
+                            Drop links here, or add one above with this section.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {secLinks.map((l) => (
+                            <SortableLinkItem
+                              key={l.id}
+                              link={l as never}
+                              onEdit={() => {
+                                setEditingId(l.id)
+                                setLinkForm({
+                                  title: l.title,
+                                  url: l.url,
+                                  icon: l.icon || 'link',
+                                  align: (l.align as 'left' | 'center' | 'right') || 'left',
+                                  sectionId: l.sectionId || '',
+                                  showLocation: parseSmartMetadata(l)?.showLocation ?? true,
+                                  showUrl: l.showUrl !== false,
+                                })
+                                window.scrollTo({ top: 0, behavior: 'smooth' })
+                              }}
+                              onToggle={() => toggleLink(l.id)}
+                              onDelete={() => deleteLink(l.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </SortableContext>
+                  </Droppable>
+                  {secLinks.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {secLinks.length} link{secLinks.length !== 1 ? 's' : ''} • Drag to reorder or
+                      move across sections
+                    </p>
+                  )}
+                </SortableSection>
+              )
+            })}
+          </div>
+        </SortableContext>
+      )}
 
       {/* No Section links */}
       <div className="space-y-2">
@@ -778,26 +880,18 @@ export default function LinksPage() {
             ({noSectionLinks.length})
           </span>
         </h3>
-        {noSectionLinks.length === 0 ? (
-          hasSections ? (
-            <p className="text-sm text-muted-foreground card p-4 text-center">
-              No unsectioned links. All links are inside sections, or create one above.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No links yet. Add your first link above.
-            </p>
-          )
-        ) : (
-          <DndContext
-            sensors={linkSensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(e) => handleLinkDragEnd(e, null)}
+        <Droppable id="container:__none__" sectionId={null}>
+          <SortableContext
+            items={noSectionLinks.map((l) => l.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <SortableContext
-              items={noSectionLinks.map((l) => l.id)}
-              strategy={verticalListSortingStrategy}
-            >
+            {noSectionLinks.length === 0 ? (
+              <p className="text-sm text-muted-foreground card p-4 text-center">
+                {hasSections
+                  ? 'No unsectioned links. Drag a link here to remove it from a section.'
+                  : 'No links yet. Add your first link above.'}
+              </p>
+            ) : (
               <div className="space-y-2">
                 {noSectionLinks.map((l) => (
                   <SortableLinkItem
@@ -809,8 +903,10 @@ export default function LinksPage() {
                         title: l.title,
                         url: l.url,
                         icon: l.icon || 'link',
+                        align: (l.align as 'left' | 'center' | 'right') || 'left',
                         sectionId: l.sectionId || '',
                         showLocation: parseSmartMetadata(l)?.showLocation ?? true,
+                        showUrl: l.showUrl !== false,
                       })
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
@@ -819,10 +915,11 @@ export default function LinksPage() {
                   />
                 ))}
               </div>
-            </SortableContext>
-          </DndContext>
-        )}
+            )}
+          </SortableContext>
+        </Droppable>
       </div>
+      </DndContext>
         </div>
 
         <aside className="w-full min-w-0 lg:sticky lg:top-6 lg:self-start">

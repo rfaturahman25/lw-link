@@ -90,7 +90,7 @@ describe('PublicProfileView location smart link', () => {
       <PublicProfileView
         displayName="Jane"
         profileUrl="https://example.com/@jane"
-        theme={resolveTheme({ themeId: 'minimal' })}
+        theme={resolveTheme({ themeId: 'mesh' })}
         links={[
           {
             id: '1',
@@ -116,7 +116,7 @@ describe('PublicProfileView location smart link', () => {
       <PublicProfileView
         displayName="Jane"
         profileUrl="https://example.com/@jane"
-        theme={resolveTheme({ themeId: 'minimal' })}
+        theme={resolveTheme({ themeId: 'mesh' })}
         links={[
           { id: '1', title: 'Kantor', url: PLACE_URL, icon: null, type: 'location', metadata: meta },
         ]}
@@ -131,7 +131,7 @@ describe('PublicProfileView location smart link', () => {
       <PublicProfileView
         displayName="Jane"
         profileUrl="https://example.com/@jane"
-        theme={resolveTheme({ themeId: 'minimal' })}
+        theme={resolveTheme({ themeId: 'mesh' })}
         links={[
           {
             id: '1',
@@ -153,7 +153,7 @@ describe('PublicProfileView location smart link', () => {
       <PublicProfileView
         displayName="Jane"
         profileUrl="https://example.com/@jane"
-        theme={resolveTheme({ themeId: 'minimal' })}
+        theme={resolveTheme({ themeId: 'mesh' })}
         links={[{ id: '1', title: 'Website', url: 'https://example.com/page', icon: null, type: 'link' }]}
       />
     )

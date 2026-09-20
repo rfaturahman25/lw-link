@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { fontStack } from './fonts'
 import { DEFAULT_THEME_ID, THEME_MAP, getThemeById } from './presets'
 import type {
+  LogoShape,
   ProfileFont,
   ProfileTheme,
   ResolvedTheme,
@@ -53,11 +54,13 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
   const overrides = cfg.overrides && typeof cfg.overrides === 'object' ? cfg.overrides : null
   const showShare = typeof cfg.showShare === 'boolean' ? cfg.showShare : undefined
   const socialStyle = cfg.socialStyle === 'plain' || cfg.socialStyle === 'circle' ? cfg.socialStyle : undefined
+  const logoShape = cfg.logoShape === 'plain' || cfg.logoShape === 'circle' ? cfg.logoShape : undefined
   return {
     themeId: cfg.themeId,
     overrides,
     ...(showShare !== undefined ? { showShare } : {}),
     ...(socialStyle !== undefined ? { socialStyle } : {}),
+    ...(logoShape !== undefined ? { logoShape } : {}),
   }
 }
 
@@ -75,6 +78,14 @@ export function resolveSocialStyle(
 ): SocialStyle {
   const cfg = parseStoredThemeConfig(profile?.themeConfig)
   return cfg?.socialStyle === 'plain' ? 'plain' : 'circle'
+}
+
+// Logo presentation: transparent PNG as-is (default) or clipped into a circle.
+export function resolveLogoShape(
+  profile: { themeConfig?: unknown } | null | undefined
+): LogoShape {
+  const cfg = parseStoredThemeConfig(profile?.themeConfig)
+  return cfg?.logoShape === 'plain' ? 'plain' : 'circle'
 }
 
 function applyOverrides(theme: ProfileTheme, o: ThemeOverrides): ResolvedTheme {
@@ -160,6 +171,7 @@ export function toDraftConfig(
       overrides: parsed.overrides || {},
       ...(parsed.showShare !== undefined ? { showShare: parsed.showShare } : {}),
       ...(parsed.socialStyle !== undefined ? { socialStyle: parsed.socialStyle } : {}),
+      ...(parsed.logoShape !== undefined ? { logoShape: parsed.logoShape } : {}),
     }
   }
   const legacyId = getThemeById(profile?.colorPalette)?.id || DEFAULT_THEME_ID
@@ -226,8 +238,8 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     bg: outlined ? 'transparent' : c.button,
     text: outlined ? c.accent : c.buttonText,
     secondary: outlined ? c.textSecondary : hexToRgba(c.buttonText, 0.72),
-    border: outlined ? c.accent : 'transparent',
-    borderWidth: outlined ? '1.5px' : '0px',
+    border: outlined ? c.accent : theme.effects.border,
+    borderWidth: outlined ? '1.5px' : '1px',
     radius: btn.radius,
     shadow: elevated ? btn.shadow : outlined ? 'none' : theme.effects.shadow,
     iconBg: outlined ? hexToRgba(c.accent, 0.14) : hexToRgba(c.buttonText, 0.16),
