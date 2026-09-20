@@ -15,6 +15,8 @@ import LinksManager from '../links/LinksManager'
 
 type SocialLike = { platform: string; value: string; enabled: boolean; position: number }
 
+const TAB_ORDER: BuilderTab[] = ['theme', 'content', 'seo']
+
 type Props = {
   profile: Parameters<typeof useProfileDraft>[0]['profile']
   user: Parameters<typeof useProfileDraft>[0]['user']
@@ -50,8 +52,17 @@ export default function VisualBuilder({
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [panelOpen, setPanelOpen] = useState(isDesktop)
   const [tab, setTab] = useState<BuilderTab>('theme')
+  const [tabDir, setTabDir] = useState<1 | -1>(1)
   const [device, setDevice] = useState<BuilderDevice>('mobile')
   const [mode, setMode] = useState<BuilderMode>(initialMode)
+
+  // Direction-aware tab switch so the panel content slides in from the side the
+  // user is moving toward.
+  const changeTab = (next: BuilderTab) => {
+    if (next === tab) return
+    setTabDir(TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 1 : -1)
+    setTab(next)
+  }
 
   const switchMode = (next: BuilderMode) => {
     setMode(next)
@@ -102,7 +113,7 @@ export default function VisualBuilder({
   )
 
   const openTab = (next: BuilderTab) => {
-    setTab(next)
+    changeTab(next)
     setPanelOpen(true)
   }
 
@@ -219,32 +230,34 @@ export default function VisualBuilder({
             mode === 'design' && panelOpen && isDesktop ? 'lg:pr-[404px]' : ''
           }`}
         >
-          {mode === 'design' ? (
-            <BuilderCanvas
-              theme={draftTheme}
-              device={device}
-              displayName={form.displayName}
-              avatarUrl={profile?.user?.avatarUrl ?? user?.avatarUrl ?? null}
-              bio={form.bio}
-              logoUrl={form.logoUrl}
-              links={enabledLinks}
-              sections={sections}
-              socials={enabledSocials}
-              profileUrl={profileUrl}
-              showShare={form.themeConfig.showShare !== false}
-              socialStyle={form.themeConfig.socialStyle === 'plain' ? 'plain' : 'circle'}
-              headerStyle={form.headerStyle}
-              bannerUrl={form.bannerUrl}
-              logoShape={form.themeConfig.logoShape ?? 'circle'}
-              featuredLinkId={form.themeConfig.featuredLinkId ?? null}
-            />
-          ) : (
-            <div className="builder-scroll h-full w-full overflow-y-auto overscroll-contain">
-              <div className="mx-auto w-full max-w-3xl px-4 pb-32 pt-6 sm:px-6">
-                <LinksManager embedded />
+          <div key={mode} className="anim-mode-in h-full">
+            {mode === 'design' ? (
+              <BuilderCanvas
+                theme={draftTheme}
+                device={device}
+                displayName={form.displayName}
+                avatarUrl={profile?.user?.avatarUrl ?? user?.avatarUrl ?? null}
+                bio={form.bio}
+                logoUrl={form.logoUrl}
+                links={enabledLinks}
+                sections={sections}
+                socials={enabledSocials}
+                profileUrl={profileUrl}
+                showShare={form.themeConfig.showShare !== false}
+                socialStyle={form.themeConfig.socialStyle === 'plain' ? 'plain' : 'circle'}
+                headerStyle={form.headerStyle}
+                bannerUrl={form.bannerUrl}
+                logoShape={form.themeConfig.logoShape ?? 'circle'}
+                featuredLinkId={form.themeConfig.featuredLinkId ?? null}
+              />
+            ) : (
+              <div className="thin-scroll h-full w-full overflow-y-auto overscroll-contain">
+                <div className="mx-auto w-full max-w-3xl px-4 pb-32 pt-6 sm:px-6">
+                  <LinksManager embedded />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {mode === 'design' && (
@@ -252,7 +265,8 @@ export default function VisualBuilder({
             open={panelOpen}
             onClose={() => setPanelOpen(false)}
             tab={tab}
-            onTabChange={setTab}
+            tabDir={tabDir}
+            onTabChange={changeTab}
             isDesktop={isDesktop}
             config={form.themeConfig}
             onConfigChange={(c) => patch({ themeConfig: c })}

@@ -19,6 +19,7 @@ type Props = {
   open: boolean
   onClose: () => void
   tab: BuilderTab
+  tabDir: 1 | -1
   onTabChange: (tab: BuilderTab) => void
   isDesktop: boolean
   config: StoredThemeConfig
@@ -39,6 +40,7 @@ export default function BuilderSettingsPanel({
   open,
   onClose,
   tab,
+  tabDir,
   onTabChange,
   isDesktop,
   config,
@@ -103,35 +105,37 @@ export default function BuilderSettingsPanel({
         id={`builder-tabpanel-${tab}`}
         role="tabpanel"
         aria-labelledby={`builder-tab-${tab}`}
-        className="builder-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4"
+        className="thin-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4"
       >
-        {tab === 'theme' && (
-          <ThemePanel
-            config={config}
-            onChange={onConfigChange}
-            headerStyle={headerStyle}
-            onHeaderStyleChange={onHeaderStyleChange}
-          />
-        )}
-        {tab === 'content' && (
-          <ContentPanel
-            draft={draft}
-            patch={patch}
-            setThemeConfig={(p) => onConfigChange({ ...config, ...p })}
-            socialErrors={socialErrors}
-            setSocials={setSocials}
-            links={links}
-            onManageLinks={onManageLinks}
-          />
-        )}
-        {tab === 'seo' && (
-          <SeoPanel
-            config={config}
-            onChange={onConfigChange}
-            displayName={displayName}
-            profileUrl={profileUrl}
-          />
-        )}
+        <div key={tab} className={tabDir === -1 ? 'anim-tab-backward' : 'anim-tab-forward'}>
+          {tab === 'theme' && (
+            <ThemePanel
+              config={config}
+              onChange={onConfigChange}
+              headerStyle={headerStyle}
+              onHeaderStyleChange={onHeaderStyleChange}
+            />
+          )}
+          {tab === 'content' && (
+            <ContentPanel
+              draft={draft}
+              patch={patch}
+              setThemeConfig={(p) => onConfigChange({ ...config, ...p })}
+              socialErrors={socialErrors}
+              setSocials={setSocials}
+              links={links}
+              onManageLinks={onManageLinks}
+            />
+          )}
+          {tab === 'seo' && (
+            <SeoPanel
+              config={config}
+              onChange={onConfigChange}
+              displayName={displayName}
+              profileUrl={profileUrl}
+            />
+          )}
+        </div>
       </div>
     </>
   )
@@ -148,7 +152,7 @@ export default function BuilderSettingsPanel({
           role="dialog"
           aria-modal="true"
           aria-label="Page settings"
-          className="builder-surface builder-sheet fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl lg:hidden"
+          className="builder-surface sheet-in fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl lg:hidden"
         >
           <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
           {body}
@@ -161,7 +165,7 @@ export default function BuilderSettingsPanel({
     <div
       role="dialog"
       aria-label="Page settings"
-      className="builder-surface absolute right-4 top-4 z-30 hidden w-[380px] flex-col overflow-hidden rounded-2xl lg:flex"
+      className="builder-surface anim-panel-in absolute right-4 top-4 z-30 hidden w-[380px] flex-col overflow-hidden rounded-2xl lg:flex"
       style={{ height: 'calc(100% - 6.5rem)' }}
     >
       {body}

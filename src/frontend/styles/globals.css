@@ -480,26 +480,26 @@
   }
 
   /* Thin, unobtrusive scrollbars inside the settings panel + canvas. */
-  .builder-scroll {
+  .thin-scroll {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
   }
 
-  .builder-scroll::-webkit-scrollbar {
+  .thin-scroll::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
-  .builder-scroll::-webkit-scrollbar-thumb {
+  .thin-scroll::-webkit-scrollbar-thumb {
     background-color: hsl(var(--border));
     border-radius: 9999px;
   }
 
-  .builder-scroll::-webkit-scrollbar-track {
+  .thin-scroll::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  .builder-sheet {
+  .sheet-in {
     animation: builderSheetIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -509,8 +509,88 @@
       opacity: 0;
     }
     to {
-      transform: translateY(0);
+      transform: none;
       opacity: 1;
+    }
+  }
+
+  /* ---- Builder transitions -------------------------------------------------
+     Direction-aware enters for menu/tab switches, mode switches and the
+     device preview. The `to` state resolves to `transform: none` so an
+     element never keeps a transform (which would become a containing block
+     for fixed children such as the link dialog). */
+  .anim-tab-forward {
+    animation: builderTabForward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim-tab-backward {
+    animation: builderTabBackward 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim-mode-in {
+    animation: builderModeIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim-device-in {
+    animation: builderDeviceIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim-panel-in {
+    animation: builderPanelIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes builderTabForward {
+    from {
+      opacity: 0;
+      transform: translateX(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes builderTabBackward {
+    from {
+      opacity: 0;
+      transform: translateX(-14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes builderModeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes builderDeviceIn {
+    from {
+      opacity: 0;
+      transform: scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes builderPanelIn {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -563,7 +643,12 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .builder-sheet {
+    .sheet-in,
+    .anim-tab-forward,
+    .anim-tab-backward,
+    .anim-mode-in,
+    .anim-device-in,
+    .anim-panel-in {
       animation: none;
     }
   }

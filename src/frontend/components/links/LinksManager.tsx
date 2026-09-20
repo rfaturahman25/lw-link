@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useDashboardContext } from '../../pages/dashboard/DashboardLayout'
 import { api } from '../../services/api'
 import { isMapsUrl, parseSmartMetadata } from '../profile/smartLink'
 import {
   DndContext,
-  closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
@@ -29,7 +28,17 @@ import {
   Folder,
   MapPin,
 } from 'lucide-react'
-import { ICON_OPTIONS, renderLinkIcon } from '../profile/linkIcons'
+import { renderLinkIcon } from '../profile/linkIcons'
+import Modal from '../ui/Modal'
+import LinkForm from './LinkForm'
+import {
+  LINK_FORM_ID,
+  emptyLinkForm,
+  linkFormFromLink,
+  validateLinkForm,
+} from './linkFormModel'
+import type { LinkFormErrors, LinkFormLink, LinkFormValues } from './linkFormModel'
+import { linksCollisionDetection } from './dndCollision'
 
 // Drop target for a section (or the unsectioned group) so links can be dragged across sections.
 function Droppable({
@@ -243,46 +252,15 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
     setSections: React.Dispatch<React.SetStateAction<Array<{ id: string; title: string; position: number }>>>
   }
 
-  const [linkForm, setLinkForm] = useState({
-    title: '',
-    url: '',
-    icon: 'link',
-    align: 'left' as 'left' | 'center' | 'right',
-    sectionId: '' as string,
-    showLocation: true,
-    showUrl: true,
-    thumbnail: '' as string,
-  })
+  const [linkForm, setLinkForm] = useState<LinkFormValues>(emptyLinkForm)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [showAddSection, setShowAddSection] = useState(false)
   const [sectionError, setSectionError] = useState('')
-  const [linkErrors, setLinkErrors] = useState<{ title?: string; url?: string }>({})
+  const [linkErrors, setLinkErrors] = useState<LinkFormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
-
-  // Memoised so unrelated form edits don't re-render all icon buttons (perceived lag).
-  const iconButtons = useMemo(
-    () =>
-      ICON_OPTIONS.map((opt) => {
-        const Icon = opt.icon
-        const selected = linkForm.icon === opt.value
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setLinkForm((f) => ({ ...f, icon: opt.value }))}
-            aria-pressed={selected}
-            title={opt.label}
-            className={`flex min-h-[44px] flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors hover:bg-accent ${selected ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background'}`}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="truncate w-full text-center text-[10px] leading-none">{opt.label}</span>
-          </button>
-        )
-      }),
-    [linkForm.icon]
-  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -324,20 +302,38 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
     await reload()
   }
 
-  const validateLink = () => {
-    const errs: { title?: string; url?: string } = {}
-    if (!linkForm.title.trim()) errs.title = 'Title is required.'
-    const url = linkForm.url.trim()
-    if (!url) errs.url = 'URL is required.'
-    else if (!/^(https?:\/\/|mailto:|tel:|sms:).+/i.test(url))
-      errs.url = 'URL must start with http://, https://, mailto:, tel: or sms:'
-    setLinkErrors(errs)
-    return Object.keys(errs).length === 0
+  const openCreateLink = () => {
+    setEditingId(null)
+    setLinkForm(emptyLinkForm())
+    setLinkErrors({})
+    setModalOpen(true)
   }
 
-  const addLink = async (e: React.FormEvent) => {
+  const openEditLink = (link: LinkFormLink) => {
+    setEditingId(link.id)
+    setLinkForm(linkFormFromLink(link))
+    setLinkErrors({})
+    setModalOpen(true)
+  }
+
+  const closeLinkModal = () => {
+    setModalOpen(false)
+    setEditingId(null)
+    setLinkForm(emptyLinkForm())
+    setLinkErrors({})
+  }
+
+  const updateLinkForm = (patch: Partial<LinkFormValues>) => {
+    setLinkForm((f) => ({ ...f, ...patch }))
+    if (patch.title !== undefined && linkErrors.title) setLinkErrors((p) => ({ ...p, title: '' }))
+    if (patch.url !== undefined && linkErrors.url) setLinkErrors((p) => ({ ...p, url: '' }))
+  }
+
+  const submitLink = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validateLink()) return
+    const errs = validateLinkForm(linkForm)
+    setLinkErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setSubmitting(true)
     const payload: Record<string, unknown> = {
       title: linkForm.title.trim(),
@@ -350,15 +346,10 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
     payload.showUrl = linkForm.showUrl
     payload.align = linkForm.align
     try {
-      if (editingId) {
-        await api.linkUpdate(editingId, payload)
-        setEditingId(null)
-      } else {
-        await api.linkCreate(payload)
-      }
-      setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true, thumbnail: '' })
-      setLinkErrors({})
+      if (editingId) await api.linkUpdate(editingId, payload)
+      else await api.linkCreate(payload)
       await reload()
+      closeLinkModal()
     } catch (err: unknown) {
       setLinkErrors({ url: err instanceof Error ? err.message : 'Failed to save link.' })
     } finally {
@@ -427,17 +418,14 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
     // --- Section reorder ---
     if (activeData?.type === 'section') {
       if (String(active.id) === String(over.id)) return
-      const targetId =
-        overData?.type === 'section'
-          ? String(over.id)
-          : overData?.type === 'link' || overData?.type === 'container'
-            ? (overData.sectionId ?? null)
-            : null
-      if (!targetId) return
-      const oldIndex = sections.findIndex((s) => s.id === active.id)
-      const newIndex = sections.findIndex((s) => s.id === targetId)
+      // Only sections are valid targets for a section drag (see collision detection).
+      const targetId = overData?.type === 'section' ? String(over.id) : null
+      if (!targetId || targetId === String(active.id)) return
+      const ordered = [...sections].sort((a, b) => a.position - b.position)
+      const oldIndex = ordered.findIndex((s) => s.id === active.id)
+      const newIndex = ordered.findIndex((s) => s.id === targetId)
       if (oldIndex === -1 || newIndex === -1) return
-      const newOrder = arrayMove(sections, oldIndex, newIndex)
+      const newOrder = arrayMove(ordered, oldIndex, newIndex)
       setSections(newOrder)
       try {
         await api.sectionReorder(newOrder.map((s) => s.id))
@@ -528,12 +516,22 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
             </>
           )}
         </div>
-        <button
-          onClick={() => setShowAddSection((v) => !v)}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" /> Add Section
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAddSection((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium hover:bg-accent"
+          >
+            <Folder className="h-4 w-4" /> Add Section
+          </button>
+          <button
+            type="button"
+            onClick={openCreateLink}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" /> Add Link
+          </button>
+        </div>
       </div>
 
       <div className="min-w-0 space-y-6">
@@ -588,187 +586,11 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
-      <form onSubmit={addLink} className="card space-y-4 rounded-2xl p-5 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <input
-              value={linkForm.title}
-              onChange={(e) => {
-                setLinkForm({ ...linkForm, title: e.target.value })
-                if (linkErrors.title) setLinkErrors((p) => ({ ...p, title: '' }))
-              }}
-              placeholder="Title (e.g. WhatsApp)"
-              className={`input ${linkErrors.title ? 'border-red-400' : ''}`}
-              aria-invalid={!!linkErrors.title}
-            />
-            {linkErrors.title && <p className="mt-1 text-xs text-red-600">{linkErrors.title}</p>}
-          </div>
-          <div>
-            <input
-              value={linkForm.url}
-              onChange={(e) => {
-                setLinkForm({ ...linkForm, url: e.target.value })
-                if (linkErrors.url) setLinkErrors((p) => ({ ...p, url: '' }))
-              }}
-              placeholder="https://..."
-              className={`input ${linkErrors.url ? 'border-red-400' : ''}`}
-              aria-invalid={!!linkErrors.url}
-            />
-            {linkErrors.url && <p className="mt-1 text-xs text-red-600">{linkErrors.url}</p>}
-            {isMapsUrl(linkForm.url) ? (
-              <div className="mt-2 space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" /> Google Maps location detected — this
-                  will be a Location Smart Link.
-                </p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={linkForm.showLocation}
-                    onChange={(e) => setLinkForm({ ...linkForm, showLocation: e.target.checked })}
-                  />
-                  Show location info on the public profile
-                </label>
-                <p className="text-[11px] text-muted-foreground">
-                  Name &amp; address are extracted from the URL when you save.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Tip: paste a Google Maps URL to create a Location Smart Link.
-              </p>
-            )}
-          </div>
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={linkForm.showUrl}
-            onChange={(e) => setLinkForm({ ...linkForm, showUrl: e.target.checked })}
-          />
-          Show URL on the profile
-        </label>
+      <p className="text-xs text-muted-foreground">
+        Drag the handle on the left of each link to reorder. Use ON/OFF to hide without deleting.
+      </p>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Thumbnail (optional)</label>
-          <div className="flex flex-wrap gap-2">
-            <input
-              value={linkForm.thumbnail}
-              onChange={(e) => setLinkForm({ ...linkForm, thumbnail: e.target.value })}
-              placeholder="https://... or upload"
-              className="input min-w-[180px] flex-1"
-            />
-            <label
-              className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
-                uploadingThumb ? 'opacity-50' : 'hover:bg-accent'
-              }`}
-            >
-              {uploadingThumb ? 'Uploading…' : 'Upload'}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                className="hidden"
-                disabled={uploadingThumb}
-                onChange={uploadThumbnail}
-              />
-            </label>
-            {linkForm.thumbnail && (
-              <button
-                type="button"
-                onClick={() => setLinkForm({ ...linkForm, thumbnail: '' })}
-                className="rounded-md border px-3 py-2 text-sm text-red-600 hover:bg-accent"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-          {linkForm.thumbnail && (
-            <img
-              src={linkForm.thumbnail}
-              alt="Thumbnail preview"
-              className="h-24 w-full rounded-lg object-cover"
-            />
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            A thumbnail lets this link become the optional featured tile — promote it in Profile →
-            Layout &amp; details.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Text alignment</label>
-          <div className="flex gap-2">
-            {(['left', 'center', 'right'] as const).map((a) => (
-              <button
-                key={a}
-                type="button"
-                onClick={() => setLinkForm({ ...linkForm, align: a })}
-                aria-pressed={linkForm.align === a}
-                className={`flex-1 rounded-md border px-3 py-2 text-xs capitalize ${
-                  linkForm.align === a
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'hover:bg-accent'
-                }`}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Section</label>
-          <select
-            value={linkForm.sectionId}
-            onChange={(e) => setLinkForm({ ...linkForm, sectionId: e.target.value })}
-            className="input"
-          >
-            <option value="">No Section</option>
-            {sections.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Icon</label>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2">
-            {iconButtons}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Choose the icon that appears next to your link (WhatsApp, Instagram, Google Sheet,
-            etc.). Saved as <code className="bg-muted px-1 rounded">{linkForm.icon}</code>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow disabled:opacity-50"
-          >
-            {submitting ? 'Saving...' : editingId ? 'Update link' : '+ Add link'}
-          </button>
-          {editingId && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null)
-                setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true, thumbnail: '' })
-                setLinkErrors({})
-              }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Drag the handle on the left of each link to reorder. Use ON/OFF to hide without deleting.
-        </p>
-      </form>
-
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={linksCollisionDetection} onDragEnd={handleDragEnd}>
       {/* Sections */}
       {hasSections && (
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -801,20 +623,7 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
                             <SortableLinkItem
                               key={l.id}
                               link={l as never}
-                              onEdit={() => {
-                                setEditingId(l.id)
-                                setLinkForm({
-                                  title: l.title,
-                                  url: l.url,
-                                  icon: l.icon || 'link',
-                                  align: (l.align as 'left' | 'center' | 'right') || 'left',
-                                  sectionId: l.sectionId || '',
-                                  showLocation: parseSmartMetadata(l)?.showLocation ?? true,
-                                  showUrl: l.showUrl !== false,
-                                  thumbnail: l.thumbnail || '',
-                                })
-                                window.scrollTo({ top: 0, behavior: 'smooth' })
-                              }}
+                              onEdit={() => openEditLink(l as LinkFormLink)}
                               onToggle={() => toggleLink(l.id)}
                               onDelete={() => deleteLink(l.id)}
                             />
@@ -861,20 +670,7 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
                   <SortableLinkItem
                     key={l.id}
                     link={l as never}
-                    onEdit={() => {
-                      setEditingId(l.id)
-                      setLinkForm({
-                        title: l.title,
-                        url: l.url,
-                        icon: l.icon || 'link',
-                        align: (l.align as 'left' | 'center' | 'right') || 'left',
-                        sectionId: l.sectionId || '',
-                        showLocation: parseSmartMetadata(l)?.showLocation ?? true,
-                        showUrl: l.showUrl !== false,
-                        thumbnail: l.thumbnail || '',
-                      })
-                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                    }}
+                    onEdit={() => openEditLink(l as LinkFormLink)}
                     onToggle={() => toggleLink(l.id)}
                     onDelete={() => deleteLink(l.id)}
                   />
@@ -886,6 +682,45 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
       </div>
       </DndContext>
       </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={closeLinkModal}
+        title={editingId ? 'Edit Link' : 'Add Link'}
+        size="lg"
+        busy={submitting}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeLinkModal}
+              disabled={submitting}
+              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form={LINK_FORM_ID}
+              disabled={submitting}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {submitting ? 'Saving…' : editingId ? 'Save' : 'Add'}
+            </button>
+          </>
+        }
+      >
+        <LinkForm
+          formId={LINK_FORM_ID}
+          values={linkForm}
+          errors={linkErrors}
+          sections={sections}
+          uploadingThumb={uploadingThumb}
+          onChange={updateLinkForm}
+          onUploadThumbnail={uploadThumbnail}
+          onSubmit={submitLink}
+        />
+      </Modal>
     </div>
   )
 }
