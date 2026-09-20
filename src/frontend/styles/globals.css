@@ -499,6 +499,17 @@
     background: transparent;
   }
 
+  /* Hide the scrollbar entirely (used by the phone screen so the preview reads
+     as one device instead of a framed panel with its own scrollbar). */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .sheet-in {
     animation: builderSheetIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
