@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { prettyJSON } from 'hono/pretty-json'
+import { eq, and, ne } from 'drizzle-orm'
 
 import healthRoutes from './api/health'
 import authRoutes from './api/auth/router'
@@ -15,6 +16,14 @@ import uploadRoutes from './api/uploads/router'
 import { errorHandler } from './middleware/error'
 import { requestLogger } from './middleware/logging'
 import { rateLimit } from './middleware/rateLimit'
+import { createDb } from './db/client'
+import { users, profiles } from './db/schema'
+import {
+  buildProfileSeo,
+  buildSitemapXml,
+  injectProfileSeo,
+  readSeoFromThemeConfig,
+} from './utils/seo'
 
 type Bindings = {
   DB: D1Database
@@ -98,6 +107,30 @@ app.get('/media/*', async (c) => {
   return new Response(object.body, { headers })
 })
 
+// Dynamic sitemap of published profiles. No static asset exists at this path,
+// so the Worker (not the asset layer) handles it.
+app.get('/sitemap.xml', async (c) => {
+  const origin = new URL(c.req.url).origin
+  let usernames: string[] = []
+  try {
+    const db = createDb(c.env.DB)
+    const rows = await db
+      .select({ username: users.username })
+      .from(users)
+      .innerJoin(profiles, eq(profiles.userId, users.id))
+      .where(and(eq(profiles.published, true), ne(users.status, 'disabled')))
+    usernames = rows.map((r) => r.username)
+  } catch {
+    usernames = []
+  }
+  return new Response(buildSitemapXml(origin, usernames), {
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=0, s-maxage=3600',
+    },
+  })
+})
+
 app.get('/debug/env', (c) => {
   const keys = Object.keys(c.env as Record<string, unknown>)
   const hasAssets = !!(c.env as unknown as { ASSETS?: unknown }).ASSETS
@@ -143,6 +176,60 @@ app.notFound(async (c) => {
     return c.redirect(canonical, 301)
   }
 
+  // Profile pages: inject per-profile SEO meta so crawlers that don't run JS
+  // (WhatsApp, Facebook, X, Slack) see real titles/descriptions instead of the
+  // generic shell. Falls back to the normal SPA response when anything is off.
+  if (c.req.method === 'GET') {
+    const profileMatch = path.match(/^\/@([^/]+)\/?$/)
+    const assets = (c.env as unknown as { ASSETS?: Fetcher }).ASSETS
+    if (profileMatch && assets) {
+      try {
+        const username = decodeURIComponent(profileMatch[1]).replace(/^@/, '').toLowerCase()
+        const db = createDb(c.env.DB)
+        const uRows = await db.select().from(users).where(eq(users.username, username)).limit(1)
+        const user = uRows[0]
+        if (user && user.status !== 'disabled') {
+          const pRows = await db
+            .select()
+            .from(profiles)
+            .where(eq(profiles.userId, user.id))
+            .limit(1)
+          const profile = pRows[0]
+          if (profile?.published) {
+            const indexReq = new Request(new URL('/index.html', rawUrl).toString(), {
+              method: 'GET',
+              headers: { Accept: 'text/html' },
+            })
+            const indexRes = await assets.fetch(indexReq)
+            if (indexRes.ok) {
+              const html = await indexRes.text()
+              const seo = readSeoFromThemeConfig(profile.themeConfig)
+              const meta = buildProfileSeo({
+                username: user.username,
+                displayName: user.displayName,
+                bio: profile.bio,
+                seoTitle: seo.title,
+                seoDescription: seo.description,
+                imageUrl: user.avatarUrl || profile.logoUrl,
+                origin: rawUrl.origin,
+                siteName: c.env.APP_NAME || 'Lensa Links',
+              })
+              return new Response(injectProfileSeo(html, meta), {
+                status: 200,
+                headers: {
+                  'Content-Type': 'text/html; charset=utf-8',
+                  'Cache-Control': 'public, max-age=0, s-maxage=300',
+                },
+              })
+            }
+          }
+        }
+      } catch {
+        // fall through to the generic SPA response
+      }
+    }
+  }
+
   // SPA fallback: serve index.html via assets (for direct URL, refresh, bookmark)
   const assets = (c.env as unknown as { ASSETS?: Fetcher }).ASSETS
   if (assets) {
@@ -164,6 +251,8 @@ app.notFound(async (c) => {
       if (indexRes.ok) {
         const headers = new Headers(indexRes.headers)
         headers.set('Content-Type', 'text/html; charset=utf-8')
+        // App shell (dashboard/login/unknown): keep it out of search results.
+        headers.set('X-Robots-Tag', 'noindex, nofollow')
         return new Response(indexRes.body, { status: 200, headers })
       }
       const headers2 = new Headers(indexRes.headers)

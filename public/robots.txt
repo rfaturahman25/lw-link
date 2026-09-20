@@ -1,2 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /login
+
+Sitemap: https://links.lensawaktu.id/sitemap.xml
