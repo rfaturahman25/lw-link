@@ -5,12 +5,12 @@ interface PublicLayoutProps {
 }
 
 // Minimal layout without header/footer for public profiles
+// Background is controlled by the page itself (e.g. PublicProfilePage theme)
+// so this layout stays transparent and doesn't impose bg-gray-50.
 const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {children}
-      </main>
+    <div className="min-h-screen">
+      <main className="flex-1">{children}</main>
     </div>
   )
 }

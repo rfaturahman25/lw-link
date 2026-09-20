@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Github, Linkedin, Twitter, Globe, Mail, Link as LinkIcon, Instagram, Youtube, Facebook, ExternalLink, MessageCircle, FileSpreadsheet, FileText, ShoppingBag, Phone, Image as ImageIcon, Video, Music } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { api } from '../../services/api'
+import { getThemeTokens } from '../../utils/theme'
 
 const iconMap: Record<string, React.ReactNode> = {
   github: <Github className="h-5 w-5" />,
@@ -33,16 +34,8 @@ type ProfileData = {
   sections?: Array<{ id: string; title: string; position: number }>
 }
 
-const PALETTE_STYLES: Record<string, { bgGradient: string; accentColor: string }> = {
-  ocean: { bgGradient: 'linear-gradient(135deg, #0077b6 0%, #90e0ef 100%)', accentColor: '#0077b6' },
-  sunset: { bgGradient: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)', accentColor: '#ff6b35' },
-  forest: { bgGradient: 'linear-gradient(135deg, #2d6a4f 0%, #74c69d 100%)', accentColor: '#2d6a4f' },
-  berry: { bgGradient: 'linear-gradient(135deg, #9d0208 0%, #e85d04 100%)', accentColor: '#9d0208' },
-  midnight: { bgGradient: 'linear-gradient(135deg, #03045e 0%, #90e0ef 100%)', accentColor: '#03045e' },
-  candy: { bgGradient: 'linear-gradient(135deg, #ff006e 0%, #8338ec 100%)', accentColor: '#ff006e' },
-  golden: { bgGradient: 'linear-gradient(135deg, #d4af37 0%, #fefae0 100%)', accentColor: '#d4af37' },
-  monochrome: { bgGradient: 'linear-gradient(135deg, #000000 0%, #cccccc 100%)', accentColor: '#000000' },
-}
+// Keep for type compat but actual tokens come from getThemeTokens (full-page theming)
+// Previously only used for avatar + link borders, now centralized in utils/theme.ts
 
 const PublicProfilePage = () => {
   const { username } = useParams<{ username: string }>()
@@ -107,54 +100,60 @@ const PublicProfilePage = () => {
       .finally(() => setLoading(false))
   }, [clean])
 
-  if (loading) return <div className="text-center py-16 text-muted-foreground">Loading @{clean}...</div>
+  // Themed loading / error keep neutral (not palette) to avoid flash
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]"><p className="text-center py-16 text-muted-foreground">Loading @{clean}...</p></div>
   if (error || !data)
     return (
-      <div className="max-w-lg mx-auto text-center space-y-6 py-16">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
-          <LinkIcon className="h-8 w-8" />
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center px-4">
+        <div className="max-w-lg mx-auto text-center space-y-6 py-16">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+            <LinkIcon className="h-8 w-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold">404</h1>
+            <h2 className="text-xl font-semibold">This page doesn't exist</h2>
+            <p className="text-sm text-muted-foreground">The Linktree page you're looking for doesn't exist or may have been removed.</p>
+            {error && <p className="text-xs text-muted-foreground">@{clean} — {error}</p>}
+          </div>
+          <div className="flex justify-center gap-3">
+            <a href="/" className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Back to Home
+            </a>
+            <a href="/login" className="inline-flex items-center justify-center rounded-md border px-6 py-2.5 text-sm hover:bg-accent">
+              Go to Login
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground">LW-link • Internal Linktree</p>
         </div>
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold">404</h1>
-          <h2 className="text-xl font-semibold">This page doesn't exist</h2>
-          <p className="text-sm text-muted-foreground">The Linktree page you're looking for doesn't exist or may have been removed.</p>
-          {error && <p className="text-xs text-muted-foreground">@{clean} — {error}</p>}
-        </div>
-        <div className="flex justify-center gap-3">
-          <a href="/" className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Back to Home
-          </a>
-          <a href="/login" className="inline-flex items-center justify-center rounded-md border px-6 py-2.5 text-sm hover:bg-accent">
-            Go to Login
-          </a>
-        </div>
-        <p className="text-xs text-muted-foreground">LW-link • Internal Linktree</p>
       </div>
     )
 
   const profileUrl = `${window.location.origin}/@${data.user.username}`
-  const themeBg = data.profile.backgroundColor || '#ffffff'
-  const textColor = data.profile.textColor || '#000000'
-  const paletteStyle = data.profile.colorPalette ? PALETTE_STYLES[data.profile.colorPalette] : null
+  const tokens = getThemeTokens({
+    colorPalette: data.profile.colorPalette ?? null,
+    backgroundColor: data.profile.backgroundColor ?? null,
+    textColor: data.profile.textColor ?? null,
+  })
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8" style={{ backgroundColor: themeBg, color: textColor }}>
+    <div className="min-h-screen w-full" style={{ background: tokens.pageBackground, color: tokens.pageText }}>
+      <div className="max-w-2xl mx-auto space-y-8 px-4 py-8">
       <div className="text-center space-y-4 py-6">
         {data.profile.logoUrl && (
           <div className="mb-4">
-            <img src={data.profile.logoUrl} alt={`${data.user.displayName} logo`} className="h-16 w-auto max-w-[200px] object-contain mx-auto" />
+            <img src={data.profile.logoUrl} alt={`${data.user.displayName} logo`} className="h-16 w-auto max-w-[200px] object-contain mx-auto drop-shadow-sm" />
           </div>
         )}
-        <div className="h-28 w-28 rounded-full flex items-center justify-center mx-auto overflow-hidden" style={paletteStyle ? { background: paletteStyle.bgGradient } : { background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)' }}>
+        <div className="h-28 w-28 rounded-full flex items-center justify-center mx-auto overflow-hidden shadow-lg ring-4" style={{ background: tokens.pageBackground.includes('gradient') ? 'rgba(255,255,255,0.18)' : tokens.iconBg, borderColor: tokens.border, backdropFilter: 'blur(6px)' }}>
           {data.user.avatarUrl ? (
             <img src={data.user.avatarUrl} alt={data.user.displayName} className="h-full w-full object-cover" />
           ) : (
-            <span className="text-3xl font-bold text-white">{data.user.displayName.charAt(0).toUpperCase()}</span>
+            <span className="text-3xl font-bold" style={{ color: tokens.pageText }}>{data.user.displayName.charAt(0).toUpperCase()}</span>
           )}
         </div>
-        <h1 className="text-3xl font-bold">{data.user.displayName}</h1>
-        <p className="text-muted-foreground">{data.profile.bio || 'No bio yet'}</p>
-        <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight" style={{ color: tokens.pageText }}>{data.user.displayName}</h1>
+        <p className="max-w-md mx-auto leading-relaxed" style={{ color: tokens.pageTextSecondary }}>{data.profile.bio || 'No bio yet'}</p>
+        <div className="flex flex-wrap justify-center gap-3 text-sm" style={{ color: tokens.pageTextSecondary }}>
           {data.profile.company && <span>{data.profile.company}</span>}
           {data.profile.team && <span>• {data.profile.team}</span>}
         </div>
@@ -171,7 +170,7 @@ const PublicProfilePage = () => {
           }
           const noSectionLinks = bySection.get(null) || []
           const hasSections = sections.length > 0
-          if (!hasSections && data.links.length === 0) return <p className="text-center text-muted-foreground py-8">No links yet</p>
+          if (!hasSections && data.links.length === 0) return <p className="text-center py-8" style={{ color: tokens.pageTextSecondary }}>No links yet</p>
           return (
             <>
               {sections.map((sec) => {
@@ -179,7 +178,7 @@ const PublicProfilePage = () => {
                 if (secLinks.length === 0) return null
                 return (
                   <div key={sec.id} className="space-y-3">
-                    <h3 className="text-sm font-bold tracking-widest text-muted-foreground uppercase text-center">{sec.title}</h3>
+                    <h3 className="text-sm font-bold tracking-widest uppercase text-center" style={{ color: tokens.pageTextSecondary }}>{sec.title}</h3>
                     <div className="space-y-3">
                       {secLinks.map((link) => (
                         <a
@@ -188,17 +187,18 @@ const PublicProfilePage = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => api.trackClick(clean, link.id).catch(() => {})}
-                          className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
-                          style={paletteStyle ? { borderColor: paletteStyle.accentColor + '40' } : {}}
+                          className="group flex items-center justify-between rounded-xl border p-4 transition hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2"
+                          style={{ background: tokens.surface, borderColor: tokens.border, boxShadow: tokens.shadow }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = tokens.borderHover; e.currentTarget.style.boxShadow = tokens.shadow }}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={paletteStyle ? { backgroundColor: paletteStyle.accentColor + '20', color: paletteStyle.accentColor } : { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' }}>{iconMap[link.icon || 'default'] || iconMap.default}</div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: tokens.iconBg, color: tokens.iconColor }}>{iconMap[link.icon || 'default'] || iconMap.default}</div>
                             <div className="text-left">
-                              <p className="font-semibold text-gray-900">{link.title}</p>
-                              <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
+                              <p className="font-semibold" style={{ color: tokens.cardText }}>{link.title}</p>
+                              <p className="text-xs truncate max-w-[220px]" style={{ color: tokens.cardTextSecondary }}>{link.url.replace(/^https?:\/\//, '')}</p>
                             </div>
                           </div>
-                          <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                          <ExternalLink className="h-5 w-5 shrink-0 transition" style={{ color: tokens.cardTextSecondary }} />
                         </a>
                       ))}
                     </div>
@@ -207,7 +207,7 @@ const PublicProfilePage = () => {
               })}
               {noSectionLinks.length > 0 && (
                 <div className="space-y-3">
-                  {hasSections && <h3 className="text-sm font-bold tracking-widest text-muted-foreground uppercase text-center">Links</h3>}
+                  {hasSections && <h3 className="text-sm font-bold tracking-widest uppercase text-center" style={{ color: tokens.pageTextSecondary }}>Links</h3>}
                   <div className="space-y-3">
                     {noSectionLinks.map((link) => (
                       <a
@@ -216,37 +216,39 @@ const PublicProfilePage = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => api.trackClick(clean, link.id).catch(() => {})}
-                        className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
-                        style={paletteStyle ? { borderColor: paletteStyle.accentColor + '40' } : {}}
+                        className="group flex items-center justify-between rounded-xl border p-4 transition hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2"
+                        style={{ background: tokens.surface, borderColor: tokens.border, boxShadow: tokens.shadow }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={paletteStyle ? { backgroundColor: paletteStyle.accentColor + '20', color: paletteStyle.accentColor } : { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' }}>{iconMap[link.icon || 'default'] || iconMap.default}</div>
+                          <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: tokens.iconBg, color: tokens.iconColor }}>{iconMap[link.icon || 'default'] || iconMap.default}</div>
                           <div className="text-left">
-                            <p className="font-semibold text-gray-900">{link.title}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
+                            <p className="font-semibold" style={{ color: tokens.cardText }}>{link.title}</p>
+                            <p className="text-xs truncate max-w-[220px]" style={{ color: tokens.cardTextSecondary }}>{link.url.replace(/^https?:\/\//, '')}</p>
                           </div>
                         </div>
-                        <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                        <ExternalLink className="h-5 w-5 shrink-0" style={{ color: tokens.cardTextSecondary }} />
                       </a>
                     ))}
                   </div>
                 </div>
               )}
-              {hasSections && noSectionLinks.length === 0 && sections.every((s) => (bySection.get(s.id) || []).length === 0) && <p className="text-center text-muted-foreground py-8">No links yet</p>}
+              {hasSections && noSectionLinks.length === 0 && sections.every((s) => (bySection.get(s.id) || []).length === 0) && <p className="text-center py-8" style={{ color: tokens.pageTextSecondary }}>No links yet</p>}
             </>
           )
         })()}
       </div>
 
-      <div className="card p-6 text-center space-y-3 bg-white">
-        <h3 className="font-semibold">Share</h3>
-        <p className="text-sm text-muted-foreground break-all">{profileUrl}</p>
-        <div className="flex justify-center bg-white p-4 rounded-lg">
+      <div className="rounded-xl border p-6 text-center space-y-3" style={{ background: tokens.surface, borderColor: tokens.border, boxShadow: tokens.shadow }}>
+        <h3 className="font-semibold" style={{ color: tokens.cardText }}>Share</h3>
+        <p className="text-sm break-all" style={{ color: tokens.cardTextSecondary }}>{profileUrl}</p>
+        <div className="flex justify-center p-4 rounded-lg" style={{ background: tokens.qrBg }}>
           <QRCodeSVG value={profileUrl} size={180} />
         </div>
-        <a href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(profileUrl)}`} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline">
+        <a href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(profileUrl)}`} target="_blank" rel="noreferrer" className="text-sm hover:underline" style={{ color: tokens.accent }}>
           Download QR (opens image)
         </a>
+      </div>
+      <p className="text-center text-xs pt-2" style={{ color: tokens.pageTextSecondary }}>LW-link • {data.user.username}</p>
       </div>
     </div>
   )
