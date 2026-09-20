@@ -23,6 +23,8 @@ export default function ProfilePage() {
   const [usernameMsg, setUsernameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [savingUsername, setSavingUsername] = useState(false)
   const [logoInput, setLogoInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     if (profile) {
@@ -44,10 +46,33 @@ export default function ProfilePage() {
   }, [profile, user])
 
   const saveProfile = async () => {
-    await api.profilePut({ bio: form.bio || null, team: form.team || null, company: form.company || null, theme: form.theme, displayName: form.displayName, colorPalette: form.colorPalette, logoUrl: form.logoUrl || null })
-    await api.profilePublish(form.published)
-    await reload()
-    alert('Profile saved')
+    if (!form.displayName.trim()) {
+      setSaveMsg({ type: 'error', text: 'Display name is required' })
+      return
+    }
+    // normalize '' -> null for nullable enum (prevents CHECK / Zod enum failure)
+    const normalizedPalette = form.colorPalette === '' ? null : form.colorPalette
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      await api.profilePut({
+        bio: form.bio || null,
+        team: form.team || null,
+        company: form.company || null,
+        theme: form.theme,
+        displayName: form.displayName.trim(),
+        colorPalette: normalizedPalette,
+        logoUrl: form.logoUrl || null,
+      })
+      await api.profilePublish(form.published)
+      await reload()
+      setSaveMsg({ type: 'success', text: 'Profile saved' })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save profile'
+      setSaveMsg({ type: 'error', text: msg })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleLogoSave = () => {
@@ -179,8 +204,9 @@ export default function ProfilePage() {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Published (visible at /@{user?.username})
         </label>
-        <button onClick={saveProfile} className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow">
-          Save profile
+        {saveMsg && <p className={`text-sm ${saveMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{saveMsg.text}</p>}
+        <button onClick={saveProfile} disabled={saving} className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow disabled:opacity-50">
+          {saving ? 'Saving...' : 'Save profile'}
         </button>
         <p className="text-xs text-muted-foreground">Username: @{user?.username} — change via API /api/me if needed. Only published profiles are public.</p>
       </div>

@@ -36,10 +36,10 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
     // ensure exists
     const existing = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
     if (existing.length === 0) {
-      await db.insert(profiles).values({ userId: user.id, ...body })
+      const { displayName: _dn, avatarUrl: _av, ...profileData } = body as Record<string, unknown>
+      await db.insert(profiles).values({ userId: user.id, ...profileData })
     } else {
       const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() }
-      if (body.displayName !== undefined) updateData.displayName = body.displayName
       if (body.bio !== undefined) updateData.bio = body.bio
       if (body.team !== undefined) updateData.team = body.team
       if (body.company !== undefined) updateData.company = body.company
@@ -54,7 +54,7 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
       if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl
       await db.update(profiles).set(updateData).where(eq(profiles.userId, user.id))
     }
-    // also sync displayName/avatar if needed via users
+    // sync displayName/avatar to users table (profiles has no such columns)
     if (body.displayName) {
       await db.update(users).set({ displayName: body.displayName }).where(eq(users.id, user.id))
     }
@@ -64,8 +64,10 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
     const rows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
     return c.json({ success: true, data: rows[0] })
   } catch (error) {
-    console.error('Profile update error:', error)
-    return c.json({ success: false, error: 'Failed to update profile' }, 500)
+    const msg = error instanceof Error ? error.message : String(error)
+    const stack = error instanceof Error ? error.stack : undefined
+    console.error('Profile update error:', msg, stack, error)
+    return c.json({ success: false, error: msg || 'Failed to update profile' }, 500)
   }
 })
 
