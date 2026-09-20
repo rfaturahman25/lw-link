@@ -64,6 +64,7 @@ type ProfileData = {
     sectionId: string | null
   }>
   sections?: Array<{ id: string; title: string; position: number }>
+  socials?: Array<{ platform: string; value: string; enabled?: boolean; position?: number }>
 }
 
 // Keep for type compat but actual tokens come from getThemeTokens (full-page theming)
@@ -163,13 +164,13 @@ const PublicProfilePage = () => {
           <div className="flex justify-center gap-3">
             <a
               href="/"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground cursor-pointer transition-all duration-200 ease-out hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.97] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:transform-none"
             >
               Back to Home
             </a>
             <a
               href="/login"
-              className="inline-flex items-center justify-center rounded-md border px-6 py-2.5 text-sm hover:bg-accent"
+              className="inline-flex items-center justify-center rounded-md border bg-white px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 ease-out hover:bg-accent hover:-translate-y-0.5 hover:shadow-sm hover:border-black/10 active:scale-[0.97] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:transform-none"
             >
               Go to Login
             </a>
@@ -218,19 +219,13 @@ const PublicProfilePage = () => {
               </span>
             )}
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <h1
               className="text-[26px] font-semibold tracking-tight leading-none"
               style={{ color: tokens.pageText }}
             >
               {data.user.displayName}
             </h1>
-            <p
-              className="text-[13px] font-medium tracking-wide"
-              style={{ color: tokens.pageTextSecondary }}
-            >
-              @{data.user.username}
-            </p>
           </div>
           {data.profile.bio?.trim() && (
             <p
@@ -240,6 +235,71 @@ const PublicProfilePage = () => {
               {data.profile.bio}
             </p>
           )}
+          {(() => {
+            const socials = (data as unknown as { socials?: Array<{ platform: string; value: string }> }).socials || []
+            if (socials.length === 0) return null
+            const socialIconMap: Record<string, React.ReactNode> = {
+              instagram: <Instagram className="h-[18px] w-[18px]" />,
+              tiktok: <Music className="h-[18px] w-[18px]" />,
+              threads: <MessageCircle className="h-[18px] w-[18px]" />,
+              youtube: <Youtube className="h-[18px] w-[18px]" />,
+              twitter: <Twitter className="h-[18px] w-[18px]" />,
+              facebook: <Facebook className="h-[18px] w-[18px]" />,
+              linkedin: <Linkedin className="h-[18px] w-[18px]" />,
+              github: <Github className="h-[18px] w-[18px]" />,
+              email: <Mail className="h-[18px] w-[18px]" />,
+              phone: <Phone className="h-[18px] w-[18px]" />,
+              website: <Globe className="h-[18px] w-[18px]" />,
+            }
+            const toHref = (platform: string, value: string) => {
+              const v = value.trim()
+              if (/^https?:\/\//i.test(v) || /^mailto:/i.test(v) || /^tel:/i.test(v)) return v
+              const handle = v.replace(/^@/, '')
+              switch (platform) {
+                case 'instagram':
+                  return `https://instagram.com/${handle}`
+                case 'tiktok':
+                  return `https://tiktok.com/@${handle}`
+                case 'threads':
+                  return `https://threads.net/@${handle}`
+                case 'youtube':
+                  return handle.includes('.') || handle.includes('/') ? `https://${handle}` : `https://youtube.com/@${handle}`
+                case 'twitter':
+                  return `https://twitter.com/${handle}`
+                case 'facebook':
+                  return `https://facebook.com/${handle}`
+                case 'linkedin':
+                  return `https://linkedin.com/in/${handle}`
+                case 'github':
+                  return `https://github.com/${handle}`
+                case 'email':
+                  return `mailto:${v}`
+                case 'phone':
+                  return `tel:${v}`
+                case 'website':
+                  return v.startsWith('http') ? v : `https://${v}`
+                default:
+                  return v.startsWith('http') ? v : `https://${v}`
+              }
+            }
+            return (
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                {socials.map((s, idx) => (
+                  <a
+                    key={`${s.platform}-${idx}`}
+                    href={toHref(s.platform, s.value)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${s.platform} — ${s.value}`}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white cursor-pointer transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-105 hover:!border-black/10 hover:!shadow-[0_6px_16px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-95 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:transform-none"
+                    style={{ borderColor: tokens.border, boxShadow: tokens.shadow, color: tokens.iconColor }}
+                  >
+                    {socialIconMap[s.platform] || <LinkIcon className="h-[18px] w-[18px]" />}
+                  </a>
+                ))}
+              </div>
+            )
+          })()}
         </div>
 
         <div className="space-y-5">
@@ -267,12 +327,12 @@ const PublicProfilePage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => api.trackClick(clean, link.id).catch(() => {})}
-                className="group flex items-center justify-between rounded-[14px] border bg-white px-4 py-[14px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 active:scale-[0.98]"
+                className="group flex items-center justify-between rounded-[14px] border bg-white px-4 py-[14px] cursor-pointer transition-all duration-200 ease-out hover:-translate-y-0.5 hover:!border-black/[0.08] hover:!shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:transform-none"
                 style={{ borderColor: tokens.border, boxShadow: tokens.shadow }}
               >
                 <div className="flex items-center gap-3.5">
                   <div
-                    className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-[#f8fafc] border"
+                    className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-[#f8fafc] border transition-all duration-200 ease-out group-hover:scale-105 group-hover:bg-white group-hover:shadow-sm motion-reduce:transition-none"
                     style={{ borderColor: tokens.border, color: tokens.iconColor }}
                   >
                     {iconMap[link.icon || 'default'] || iconMap.default}
@@ -293,7 +353,7 @@ const PublicProfilePage = () => {
                   </div>
                 </div>
                 <ExternalLink
-                  className="h-4 w-4 shrink-0"
+                  className="h-4 w-4 shrink-0 transition-all duration-200 ease-out group-hover:translate-x-0.5 group-hover:opacity-100 motion-reduce:transition-none"
                   style={{ color: tokens.cardTextSecondary, opacity: 0.7 }}
                 />
               </a>
@@ -374,7 +434,7 @@ const PublicProfilePage = () => {
             href={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(profileUrl)}`}
             target="_blank"
             rel="noreferrer"
-            className="text-xs underline decoration-black/10 underline-offset-4 hover:decoration-black/20"
+            className="inline-flex items-center justify-center rounded-sm px-1 py-0.5 text-xs underline decoration-black/10 underline-offset-4 cursor-pointer transition-all duration-200 ease-out hover:decoration-black/30 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:ring-offset-2 active:scale-[0.97] motion-reduce:transition-none"
             style={{ color: tokens.cardTextSecondary }}
           >
             Download QR
@@ -384,7 +444,7 @@ const PublicProfilePage = () => {
           className="text-center text-[11px] tracking-wide"
           style={{ color: tokens.pageTextSecondary, opacity: 0.6 }}
         >
-          lensawaktu.id • @{data.user.username}
+          lensawaktu.id
         </p>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { eq, and, desc, sql, count } from 'drizzle-orm'
 import { createDb } from '../../db/client'
-import { users, profiles, links, sections, analyticsEvents } from '../../db/schema'
+import { users, profiles, links, sections, analyticsEvents, profileSocialLinks } from '../../db/schema'
 import { hashIP } from '../../utils/security'
 
 type Bindings = { DB: D1Database }
@@ -23,6 +23,7 @@ publicRoutes.get('/:username', async (c) => {
   if (!profile || !profile.published) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Profile not published' } }, 404)
   const lRows = await db.select().from(links).where(and(eq(links.userId, user.id), eq(links.enabled, true))).orderBy(links.position)
   const sRows = await db.select().from(sections).where(eq(sections.userId, user.id)).orderBy(sections.position)
+  const socialRows = await db.select().from(profileSocialLinks).where(and(eq(profileSocialLinks.userId, user.id), eq(profileSocialLinks.enabled, true))).orderBy(profileSocialLinks.position)
   // filter out empty sections for public view
   const linksBySection = new Map<string | null, typeof lRows>()
   for (const l of lRows) {
@@ -38,6 +39,7 @@ publicRoutes.get('/:username', async (c) => {
       profile,
       links: lRows,
       sections: visibleSections,
+      socials: socialRows,
     },
   })
 })

@@ -43,7 +43,19 @@ export const profiles = sqliteTable('profiles', {
     enum: ['ocean', 'sunset', 'forest', 'berry', 'midnight', 'candy', 'golden', 'monochrome'],
   }),
   logoUrl: text('logo_url'),
+  themeConfig: text('theme_config'),
   published: integer('published', { mode: 'boolean' }).default(false),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+})
+
+export const profileSocialLinks = sqliteTable('profile_social_links', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: text('platform').notNull(),
+  value: text('value').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  position: integer('position').notNull().default(0),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 })
@@ -132,6 +144,7 @@ export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Profile = typeof profiles.$inferSelect
 export type NewProfile = typeof profiles.$inferInsert
+export type ProfileSocialLink = typeof profileSocialLinks.$inferSelect
 export type Section = typeof sections.$inferSelect
 export type NewSection = typeof sections.$inferInsert
 export type Link = typeof links.$inferSelect

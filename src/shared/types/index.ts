@@ -7,6 +7,18 @@ export type AvatarShape = 'circle' | 'square' | 'rounded'
 export type EventType = 'profile_view' | 'link_click'
 export type ColorPalette =
   'ocean' | 'sunset' | 'forest' | 'berry' | 'midnight' | 'candy' | 'golden' | 'monochrome'
+export type ProfileFont = 'inter' | 'dm-sans' | 'poppins' | 'manrope' | 'plus-jakarta-sans' | 'space-grotesk' | 'playfair-display'
+export type SocialPlatform = 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'twitter' | 'facebook' | 'linkedin' | 'github' | 'email' | 'phone' | 'website'
+
+export interface ThemeConfig {
+  background: string
+  surface: string
+  button: string
+  buttonText: string
+  text: string
+  secondaryText: string
+  accent: string
+}
 
 export interface User {
   id: string
@@ -33,9 +45,19 @@ export interface Profile {
   avatarShape: AvatarShape
   colorPalette?: ColorPalette | null
   logoUrl?: string | null
+  themeConfig?: ThemeConfig | null
   published: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface ProfileSocialLink {
+  id: string
+  userId: string
+  platform: SocialPlatform
+  value: string
+  enabled: boolean
+  position: number
 }
 
 export interface Link {

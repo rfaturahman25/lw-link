@@ -2,11 +2,11 @@ import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { zValidator } from '@hono/zod-validator'
 import { createDb } from '../../db/client'
-import { profiles, users } from '../../db/schema'
+import { profiles, profileSocialLinks, users } from '../../db/schema'
 import { authMiddleware } from '../../middleware/auth'
 import { requirePermission, PERMISSIONS } from '../../middleware/rbac'
 import type { AuthUser } from '../../middleware/auth'
-import { profileUpdateSchema } from '../../utils/validation'
+import { profileSocialLinksSchema, profileUpdateSchema } from '../../utils/validation'
 
 type Bindings = { DB: D1Database }
 
@@ -50,6 +50,7 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
       if (body.avatarShape !== undefined) updateData.avatarShape = body.avatarShape
       if (body.colorPalette !== undefined) updateData.colorPalette = body.colorPalette
       if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl
+      if (body.themeConfig !== undefined) updateData.themeConfig = body.themeConfig ? JSON.stringify(body.themeConfig) : null
       await db.update(profiles).set(updateData).where(eq(profiles.userId, user.id))
     }
     // sync displayName/avatar to users table (profiles has no such columns)
@@ -70,6 +71,24 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
     console.error('Profile update error:', msg, stack, error)
     return c.json({ success: false, error: msg || 'Failed to update profile' }, 500)
   }
+})
+
+profileRoutes.get('/socials', async (c) => {
+  const user = c.get('user') as AuthUser
+  const db = createDb(c.env.DB)
+  const socials = await db.select().from(profileSocialLinks).where(eq(profileSocialLinks.userId, user.id)).orderBy(profileSocialLinks.position)
+  return c.json({ success: true, data: socials })
+})
+
+profileRoutes.put('/socials', zValidator('json', profileSocialLinksSchema), async (c) => {
+  const user = c.get('user') as AuthUser
+  const { socials } = c.req.valid('json')
+  const db = createDb(c.env.DB)
+  await db.delete(profileSocialLinks).where(eq(profileSocialLinks.userId, user.id))
+  for (const social of socials) {
+    await db.insert(profileSocialLinks).values({ userId: user.id, ...social })
+  }
+  return c.json({ success: true })
 })
 
 profileRoutes.put('/publish', async (c) => {
