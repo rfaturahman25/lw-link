@@ -100,11 +100,11 @@ const PublicProfilePage = () => {
       .finally(() => setLoading(false))
   }, [clean])
 
-  // Themed loading / error keep neutral (not palette) to avoid flash
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]"><p className="text-center py-16 text-muted-foreground">Loading @{clean}...</p></div>
+  // Themed loading / error keep neutral (not palette) to avoid flash — full viewport, no app shell
+  if (loading) return <div className="min-h-[100dvh] min-h-screen w-full flex items-center justify-center bg-[#f8fafc]"><p className="text-center py-16 text-muted-foreground">Loading @{clean}...</p></div>
   if (error || !data)
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center px-4">
+      <div className="min-h-[100dvh] min-h-screen w-full bg-[#f8fafc] flex items-center justify-center px-4">
         <div className="max-w-lg mx-auto text-center space-y-6 py-16">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
             <LinkIcon className="h-8 w-8" />
@@ -136,8 +136,8 @@ const PublicProfilePage = () => {
   })
 
   return (
-    <div className="min-h-screen w-full" style={{ background: tokens.pageBackground, color: tokens.pageText }}>
-      <div className="mx-auto max-w-[480px] space-y-7 px-4 py-10 sm:py-12">
+    <div className="min-h-[100dvh] min-h-screen w-full" style={{ background: tokens.pageBackground, color: tokens.pageText }}>
+      <div className="mx-auto max-w-[480px] space-y-7 px-4 py-10 sm:py-12 w-full">
         <div className="text-center space-y-4 pb-2">
           {data.profile.logoUrl && (
             <div className="mb-2">

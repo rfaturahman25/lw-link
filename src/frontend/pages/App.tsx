@@ -1,6 +1,5 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from '../components/layout/Layout'
-import PublicLayout from '../components/layout/PublicLayout'
 import ProtectedRoute from '../components/ProtectedRoute'
 import LoginPage from './auth/LoginPage'
 import PublicProfilePage from './public/PublicProfilePage'
@@ -48,13 +47,13 @@ function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      {/* Public profile — FULL-BLEED standalone, no app shell (no Header/Footer, no outer frame) */}
+      {/* Must be sibling to Layout so it doesn't inherit Layout's container/header/footer */}
+      <Route path=":username" element={<PublicProfilePage />} />
+
       <Route path="/" element={<Layout />}>
         <Route index element={<RootRedirect />} />
         <Route path="login" element={<LoginRoute />} />
-        {/* Public profile - separate layout without header/footer */}
-        <Route path="" element={<PublicLayout><Outlet /></PublicLayout>}>
-          <Route path=":username" element={<PublicProfilePage />} />
-        </Route>
         {/* Dashboard routes */}
         <Route
           path="dashboard"
