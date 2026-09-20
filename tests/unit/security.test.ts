@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { isSafeUrl, hashToken, generateToken } from '../../src/backend/utils/security'
-import { urlSchema, usernameSchema } from '../../src/backend/utils/validation'
+import { profileUpdateSchema, urlSchema, usernameSchema } from '../../src/backend/utils/validation'
 
 describe('security utils', () => {
   it('allows https', () => expect(isSafeUrl('https://example.com')).toBe(true))
@@ -22,7 +22,18 @@ describe('security utils', () => {
 
 describe('validation', () => {
   it('username ok', () => expect(usernameSchema.safeParse('rizki_123').success).toBe(true))
-  it('username rejects uppercase', () => expect(usernameSchema.safeParse('Rizki').success).toBe(false))
-  it('url rejects javascript', () => expect(urlSchema.safeParse('javascript:alert(1)').success).toBe(false))
-  it('url accepts https', () => expect(urlSchema.safeParse('https://github.com').success).toBe(true))
+  it('username rejects uppercase', () =>
+    expect(usernameSchema.safeParse('Rizki').success).toBe(false))
+  it('url rejects javascript', () =>
+    expect(urlSchema.safeParse('javascript:alert(1)').success).toBe(false))
+  it('url accepts https', () =>
+    expect(urlSchema.safeParse('https://github.com').success).toBe(true))
+  it('does not retain removed team or company profile fields', () => {
+    const result = profileUpdateSchema.parse({
+      bio: 'Hello',
+      team: 'Platform',
+      company: 'Lensawaktu',
+    })
+    expect(result).toEqual({ bio: 'Hello' })
+  })
 })

@@ -17,18 +17,22 @@ adminRoutes.use('*', authMiddleware(true))
 
 // Helper to get client IP
 function getIP(c: { req: { header: (n: string) => string | undefined } }): string {
-  return c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+  return (
+    c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+  )
 }
 
 // Schemas
 const createUserSchema = z.object({
   email: z.string().email(),
-  username: z.string().min(3).max(30).regex(/^[a-z0-9_]+$/, 'Only lowercase alphanumeric and underscore'),
+  username: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[a-z0-9_]+$/, 'Only lowercase alphanumeric and underscore'),
   displayName: z.string().min(1).max(100),
   password: z.string().min(6).max(100),
   role: z.enum(['user', 'admin', 'super_admin']).default('user'),
-  team: z.string().max(100).optional(),
-  company: z.string().max(100).optional(),
 })
 
 const updateRoleSchema = z.object({
@@ -57,7 +61,12 @@ adminRoutes.get('/users', requirePermission(PERMISSIONS.USER_READ), async (c) =>
   let filtered = rows
   if (q) {
     const lq = q.toLowerCase()
-    filtered = filtered.filter((u) => u.username.toLowerCase().includes(lq) || u.email.toLowerCase().includes(lq) || u.displayName.toLowerCase().includes(lq))
+    filtered = filtered.filter(
+      (u) =>
+        u.username.toLowerCase().includes(lq) ||
+        u.email.toLowerCase().includes(lq) ||
+        u.displayName.toLowerCase().includes(lq)
+    )
   }
   if (role && ['user', 'admin', 'super_admin'].includes(role)) {
     filtered = filtered.filter((u) => u.role === role)
@@ -82,74 +91,112 @@ adminRoutes.get('/users', requirePermission(PERMISSIONS.USER_READ), async (c) =>
 })
 
 // POST /users - create user
-adminRoutes.post('/users', requirePermission(PERMISSIONS.USER_CREATE), zValidator('json', createUserSchema), async (c) => {
-  const actor = c.get('user') as AuthUser
-  const body = c.req.valid('json')
-  const db = createDb(c.env.DB)
+adminRoutes.post(
+  '/users',
+  requirePermission(PERMISSIONS.USER_CREATE),
+  zValidator('json', createUserSchema),
+  async (c) => {
+    const actor = c.get('user') as AuthUser
+    const body = c.req.valid('json')
+    const db = createDb(c.env.DB)
 
-  // RBAC: ADMIN cannot create SUPER_ADMIN
-  if (!canManageRole(actor.role, 'user' as AuthUser['role'], body.role as AuthUser['role'])) {
-    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Cannot create user with this role' } }, 403)
+    // RBAC: ADMIN cannot create SUPER_ADMIN
+    if (!canManageRole(actor.role, 'user' as AuthUser['role'], body.role as AuthUser['role'])) {
+      return c.json(
+        {
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Cannot create user with this role' },
+        },
+        403
+      )
+    }
+
+    // check duplicate
+    const dupEmail = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, body.email.toLowerCase()))
+      .limit(1)
+    if (dupEmail.length)
+      return c.json(
+        { success: false, error: { code: 'EMAIL_TAKEN', message: 'Email already taken' } },
+        409
+      )
+    const dupUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, body.username.toLowerCase()))
+      .limit(1)
+    if (dupUser.length)
+      return c.json(
+        { success: false, error: { code: 'USERNAME_TAKEN', message: 'Username already taken' } },
+        409
+      )
+
+    const passwordHash = await hashPassword(body.password)
+    const id = crypto.randomUUID()
+    await db.insert(users).values({
+      id,
+      email: body.email.toLowerCase(),
+      username: body.username.toLowerCase(),
+      displayName: body.displayName,
+      passwordHash,
+      role: body.role as AuthUser['role'],
+      status: 'active',
+    })
+    // create profile
+    try {
+      await db.insert(profiles).values({ userId: id, published: false })
+    } catch (_e) {
+      // ignore
+    }
+
+    await createAuditLog(c.env.DB, {
+      actorId: actor.id,
+      actorUsername: actor.username,
+      actorRole: actor.role,
+      action: 'CREATE_USER',
+      targetType: 'user',
+      targetId: id,
+      targetUsername: body.username,
+      details: `Created ${body.role} ${body.email}`,
+      ipAddress: getIP(c),
+      userAgent: c.req.header('user-agent'),
+    })
+
+    const fresh = await db.select().from(users).where(eq(users.id, id)).limit(1)
+    return c.json({ success: true, data: fresh[0] }, 201)
   }
-
-  // check duplicate
-  const dupEmail = await db.select().from(users).where(eq(users.email, body.email.toLowerCase())).limit(1)
-  if (dupEmail.length) return c.json({ success: false, error: { code: 'EMAIL_TAKEN', message: 'Email already taken' } }, 409)
-  const dupUser = await db.select().from(users).where(eq(users.username, body.username.toLowerCase())).limit(1)
-  if (dupUser.length) return c.json({ success: false, error: { code: 'USERNAME_TAKEN', message: 'Username already taken' } }, 409)
-
-  const passwordHash = await hashPassword(body.password)
-  const id = crypto.randomUUID()
-  await db.insert(users).values({
-    id,
-    email: body.email.toLowerCase(),
-    username: body.username.toLowerCase(),
-    displayName: body.displayName,
-    passwordHash,
-    role: body.role as AuthUser['role'],
-    status: 'active',
-  })
-  // create profile
-  try {
-    await db.insert(profiles).values({ userId: id, team: body.team || null, company: body.company || null, published: false })
-  } catch (_e) {
-    // ignore
-  }
-
-  await createAuditLog(c.env.DB, {
-    actorId: actor.id,
-    actorUsername: actor.username,
-    actorRole: actor.role,
-    action: 'CREATE_USER',
-    targetType: 'user',
-    targetId: id,
-    targetUsername: body.username,
-    details: `Created ${body.role} ${body.email}`,
-    ipAddress: getIP(c),
-    userAgent: c.req.header('user-agent'),
-  })
-
-  const fresh = await db.select().from(users).where(eq(users.id, id)).limit(1)
-  return c.json({ success: true, data: fresh[0] }, 201)
-})
+)
 
 // PUT /users/:id/status - disable/enable
 adminRoutes.put('/users/:id/status', requirePermission(PERMISSIONS.USER_DISABLE), async (c) => {
   const actor = c.get('user') as AuthUser
   const id = c.req.param('id')
   const { status } = (await c.req.json().catch(() => ({}))) as { status?: string }
-  if (!['active', 'disabled'].includes(status || '')) return c.json({ success: false, error: { code: 'BAD_STATUS' } }, 400)
-  if (actor.id === id) return c.json({ success: false, error: { code: 'SELF_DISABLE', message: 'Cannot change own status' } }, 400)
+  if (!['active', 'disabled'].includes(status || ''))
+    return c.json({ success: false, error: { code: 'BAD_STATUS' } }, 400)
+  if (actor.id === id)
+    return c.json(
+      { success: false, error: { code: 'SELF_DISABLE', message: 'Cannot change own status' } },
+      400
+    )
 
   const db = createDb(c.env.DB)
   const targetRows = await db.select().from(users).where(eq(users.id, id)).limit(1)
   if (!targetRows.length) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
   const target = targetRows[0] as AuthUser & { id: string }
   if (!canManageRole(actor.role, target.role as AuthUser['role'])) {
-    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Cannot manage this user' } }, 403)
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'Cannot manage this user' } },
+      403
+    )
   }
 
-  await db.update(users).set({ status: status as 'active' | 'disabled', updatedAt: new Date().toISOString() }).where(eq(users.id, id))
+  await db
+    .update(users)
+    .set({ status: status as 'active' | 'disabled', updatedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
 
   await createAuditLog(c.env.DB, {
     actorId: actor.id,
@@ -168,56 +215,85 @@ adminRoutes.put('/users/:id/status', requirePermission(PERMISSIONS.USER_DISABLE)
 })
 
 // PUT /users/:id/role - change role
-adminRoutes.put('/users/:id/role', requirePermission(PERMISSIONS.ROLE_MANAGE), zValidator('json', updateRoleSchema), async (c) => {
-  const actor = c.get('user') as AuthUser
-  const id = c.req.param('id')
-  const { role } = c.req.valid('json')
-  if (actor.id === id) return c.json({ success: false, error: { code: 'SELF_ROLE', message: 'Cannot change own role' } }, 400)
+adminRoutes.put(
+  '/users/:id/role',
+  requirePermission(PERMISSIONS.ROLE_MANAGE),
+  zValidator('json', updateRoleSchema),
+  async (c) => {
+    const actor = c.get('user') as AuthUser
+    const id = c.req.param('id')
+    const { role } = c.req.valid('json')
+    if (actor.id === id)
+      return c.json(
+        { success: false, error: { code: 'SELF_ROLE', message: 'Cannot change own role' } },
+        400
+      )
 
-  const db = createDb(c.env.DB)
-  const targetRows = await db.select().from(users).where(eq(users.id, id)).limit(1)
-  if (!targetRows.length) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
-  const target = targetRows[0] as AuthUser & { id: string }
+    const db = createDb(c.env.DB)
+    const targetRows = await db.select().from(users).where(eq(users.id, id)).limit(1)
+    if (!targetRows.length) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
+    const target = targetRows[0] as AuthUser & { id: string }
 
-  if (!canManageRole(actor.role, target.role as AuthUser['role'], role as AuthUser['role'])) {
-    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Cannot assign this role' } }, 403)
+    if (!canManageRole(actor.role, target.role as AuthUser['role'], role as AuthUser['role'])) {
+      return c.json(
+        { success: false, error: { code: 'FORBIDDEN', message: 'Cannot assign this role' } },
+        403
+      )
+    }
+
+    await db
+      .update(users)
+      .set({ role: role as AuthUser['role'], updatedAt: new Date().toISOString() })
+      .where(eq(users.id, id))
+
+    await createAuditLog(c.env.DB, {
+      actorId: actor.id,
+      actorUsername: actor.username,
+      actorRole: actor.role,
+      action: 'CHANGE_ROLE',
+      targetType: 'user',
+      targetId: id,
+      targetUsername: target.username,
+      details: `${target.role} → ${role}`,
+      ipAddress: getIP(c),
+      userAgent: c.req.header('user-agent'),
+    })
+
+    return c.json({ success: true })
   }
-
-  await db.update(users).set({ role: role as AuthUser['role'], updatedAt: new Date().toISOString() }).where(eq(users.id, id))
-
-  await createAuditLog(c.env.DB, {
-    actorId: actor.id,
-    actorUsername: actor.username,
-    actorRole: actor.role,
-    action: 'CHANGE_ROLE',
-    targetType: 'user',
-    targetId: id,
-    targetUsername: target.username,
-    details: `${target.role} → ${role}`,
-    ipAddress: getIP(c),
-    userAgent: c.req.header('user-agent'),
-  })
-
-  return c.json({ success: true })
-})
+)
 
 // DELETE /users/:id
 adminRoutes.delete('/users/:id', requirePermission(PERMISSIONS.USER_DELETE), async (c) => {
   const actor = c.get('user') as AuthUser
   const id = c.req.param('id')
-  if (actor.id === id) return c.json({ success: false, error: { code: 'SELF_DELETE', message: 'Cannot delete yourself' } }, 400)
+  if (actor.id === id)
+    return c.json(
+      { success: false, error: { code: 'SELF_DELETE', message: 'Cannot delete yourself' } },
+      400
+    )
 
   const db = createDb(c.env.DB)
   const targetRows = await db.select().from(users).where(eq(users.id, id)).limit(1)
   if (!targetRows.length) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
   const target = targetRows[0] as AuthUser & { id: string }
   if (!canManageRole(actor.role, target.role as AuthUser['role'])) {
-    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Cannot delete this user' } }, 403)
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'Cannot delete this user' } },
+      403
+    )
   }
   // prevent deleting last super_admin
   if (target.role === 'super_admin') {
     const supers = await db.select().from(users).where(eq(users.role, 'super_admin'))
-    if (supers.length <= 1) return c.json({ success: false, error: { code: 'LAST_SUPER_ADMIN', message: 'Cannot delete last super_admin' } }, 400)
+    if (supers.length <= 1)
+      return c.json(
+        {
+          success: false,
+          error: { code: 'LAST_SUPER_ADMIN', message: 'Cannot delete last super_admin' },
+        },
+        400
+      )
   }
 
   await db.delete(users).where(eq(users.id, id))
@@ -245,29 +321,40 @@ adminRoutes.get('/profiles', requirePermission(PERMISSIONS.USER_READ), async (c)
   return c.json({ success: true, data: rows })
 })
 
-adminRoutes.put('/profiles/:id/publish', requirePermission(PERMISSIONS.LINK_MANAGE_ALL), async (c) => {
-  const id = c.req.param('id')
-  const { published } = (await c.req.json().catch(() => ({}))) as { published?: boolean }
-  const db = createDb(c.env.DB)
-  await db.update(profiles).set({ published: !!published, updatedAt: new Date().toISOString() }).where(eq(profiles.id, id))
-  const actor = c.get('user') as AuthUser
-  await createAuditLog(c.env.DB, {
-    actorId: actor.id,
-    actorUsername: actor.username,
-    actorRole: actor.role,
-    action: published ? 'PUBLISH_PROFILE' : 'UNPUBLISH_PROFILE',
-    targetType: 'profile',
-    targetId: id,
-    ipAddress: getIP(c),
-    userAgent: c.req.header('user-agent'),
-  })
-  return c.json({ success: true })
-})
+adminRoutes.put(
+  '/profiles/:id/publish',
+  requirePermission(PERMISSIONS.LINK_MANAGE_ALL),
+  async (c) => {
+    const id = c.req.param('id')
+    const { published } = (await c.req.json().catch(() => ({}))) as { published?: boolean }
+    const db = createDb(c.env.DB)
+    await db
+      .update(profiles)
+      .set({ published: !!published, updatedAt: new Date().toISOString() })
+      .where(eq(profiles.id, id))
+    const actor = c.get('user') as AuthUser
+    await createAuditLog(c.env.DB, {
+      actorId: actor.id,
+      actorUsername: actor.username,
+      actorRole: actor.role,
+      action: published ? 'PUBLISH_PROFILE' : 'UNPUBLISH_PROFILE',
+      targetType: 'profile',
+      targetId: id,
+      ipAddress: getIP(c),
+      userAgent: c.req.header('user-agent'),
+    })
+    return c.json({ success: true })
+  }
+)
 
 // GET /audit-logs - super_admin only
 adminRoutes.get('/audit-logs', requirePermission(PERMISSIONS.AUDIT_READ), async (c) => {
   const user = c.get('user') as AuthUser
-  if (user.role !== 'super_admin') return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Super admin only' } }, 403)
+  if (user.role !== 'super_admin')
+    return c.json(
+      { success: false, error: { code: 'FORBIDDEN', message: 'Super admin only' } },
+      403
+    )
   const db = createDb(c.env.DB)
   const limit = Math.min(100, parseInt(c.req.query('limit') || '50', 10))
   const rows = await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit)
@@ -281,7 +368,10 @@ adminRoutes.get('/analytics-all', requirePermission(PERMISSIONS.ANALYTICS_VIEW_A
   const total = await db.select({ cnt: sql<number>`count(*)` }).from(auditLogs)
   // placeholder - return user count
   const userCount = await db.select({ cnt: sql<number>`count(*)` }).from(users)
-  return c.json({ success: true, data: { totalUsers: userCount[0]?.cnt ?? 0, auditCount: total[0]?.cnt ?? 0 } })
+  return c.json({
+    success: true,
+    data: { totalUsers: userCount[0]?.cnt ?? 0, auditCount: total[0]?.cnt ?? 0 },
+  })
 })
 
 export default adminRoutes

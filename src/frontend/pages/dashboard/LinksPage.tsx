@@ -1,8 +1,22 @@
 import { useState } from 'react'
 import { useDashboardContext } from './DashboardLayout'
 import { api } from '../../services/api'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, KeyboardSensor, DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  KeyboardSensor,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
   GripVertical,
@@ -72,19 +86,49 @@ const iconMap: Record<string, React.ReactNode> = {
   default: <LinkIcon className="h-5 w-5" />,
 }
 
-function SortableLinkItem({ link, onEdit, onToggle, onDelete }: { link: { id: string; title: string; url: string; icon: string | null; enabled: boolean; sectionId: string | null }; onEdit: () => void; onToggle: () => void; onDelete: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: link.id })
+function SortableLinkItem({
+  link,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  link: {
+    id: string
+    title: string
+    url: string
+    icon: string | null
+    enabled: boolean
+    sectionId: string | null
+  }
+  onEdit: () => void
+  onToggle: () => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: link.id,
+  })
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
   }
   return (
-    <div ref={setNodeRef} style={style} className={`card p-3 flex items-center gap-2 ${isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''}`}>
-      <button {...attributes} {...listeners} className="shrink-0 rounded p-1.5 hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing touch-none" aria-label="Drag to reorder">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`card p-3 flex items-center gap-2 ${isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''}`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="shrink-0 rounded p-1.5 hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+        aria-label="Drag to reorder"
+      >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">{iconMap[link.icon || 'link'] || iconMap.default}</div>
+      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        {iconMap[link.icon || 'link'] || iconMap.default}
+      </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate text-sm">
           {link.title} {link.enabled ? '' : '(disabled)'}
@@ -95,10 +139,16 @@ function SortableLinkItem({ link, onEdit, onToggle, onDelete }: { link: { id: st
         <button onClick={onEdit} className="rounded border px-2 py-1 text-xs hover:bg-accent">
           Edit
         </button>
-        <button onClick={onToggle} className={`rounded px-2 py-1 text-xs font-medium ${link.enabled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+        <button
+          onClick={onToggle}
+          className={`rounded px-2 py-1 text-xs font-medium ${link.enabled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+        >
           {link.enabled ? 'ON' : 'OFF'}
         </button>
-        <button onClick={onDelete} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100">
+        <button
+          onClick={onDelete}
+          className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+        >
           Delete
         </button>
       </div>
@@ -106,8 +156,20 @@ function SortableLinkItem({ link, onEdit, onToggle, onDelete }: { link: { id: st
   )
 }
 
-function SortableSection({ section, children, onEdit, onDelete }: { section: { id: string; title: string }; children: React.ReactNode; onEdit: (id: string, title: string) => void; onDelete: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id })
+function SortableSection({
+  section,
+  children,
+  onEdit,
+  onDelete,
+}: {
+  section: { id: string; title: string }
+  children: React.ReactNode
+  onEdit: (id: string, title: string) => void
+  onDelete: (id: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.id,
+  })
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -122,24 +184,45 @@ function SortableSection({ section, children, onEdit, onDelete }: { section: { i
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`card p-4 space-y-3 ${isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`card p-4 space-y-3 ${isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''}`}
+    >
       <div className="flex items-center gap-2">
-        <button {...attributes} {...listeners} className="shrink-0 rounded p-1 hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing">
+        <button
+          {...attributes}
+          {...listeners}
+          className="shrink-0 rounded p-1 hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing"
+        >
           <GripVertical className="h-4 w-4" />
         </button>
         <Folder className="h-4 w-4 text-primary" />
         {editing ? (
-          <input value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSave()} onBlur={handleSave} autoFocus className="input h-7 text-sm font-semibold flex-1" />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            onBlur={handleSave}
+            autoFocus
+            className="input h-7 text-sm font-semibold flex-1"
+          />
         ) : (
           <h3 className="font-semibold flex-1">{section.title}</h3>
         )}
         <div className="flex items-center gap-1">
           {!editing && (
-            <button onClick={() => setEditing(true)} className="rounded p-1 hover:bg-accent text-muted-foreground">
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded p-1 hover:bg-accent text-muted-foreground"
+            >
               <Edit2 className="h-4 w-4" />
             </button>
           )}
-          <button onClick={() => onDelete(section.id)} className="rounded p-1 hover:bg-accent text-muted-foreground">
+          <button
+            onClick={() => onDelete(section.id)}
+            className="rounded p-1 hover:bg-accent text-muted-foreground"
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
@@ -150,16 +233,42 @@ function SortableSection({ section, children, onEdit, onDelete }: { section: { i
 }
 
 export default function LinksPage() {
-  const { links, sections, reload, setLinks } = useDashboardContext() as unknown as { links: Array<{ id: string; title: string; url: string; icon: string | null; enabled: boolean; sectionId: string | null; position: number }>; sections: Array<{ id: string; title: string; position: number }>; reload: () => Promise<void>; setLinks: React.Dispatch<React.SetStateAction<any[]>> }
-  const [linkForm, setLinkForm] = useState({ title: '', url: '', icon: 'link', sectionId: '' as string })
+  const { links, sections, reload, setLinks } = useDashboardContext() as unknown as {
+    links: Array<{
+      id: string
+      title: string
+      url: string
+      icon: string | null
+      enabled: boolean
+      sectionId: string | null
+      position: number
+    }>
+    sections: Array<{ id: string; title: string; position: number }>
+    reload: () => Promise<void>
+    setLinks: React.Dispatch<React.SetStateAction<any[]>>
+  }
+  const [linkForm, setLinkForm] = useState({
+    title: '',
+    url: '',
+    icon: 'link',
+    sectionId: '' as string,
+  })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [showAddSection, setShowAddSection] = useState(false)
 
-  const sectionSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
-  const linkSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  const sectionSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+  const linkSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  )
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -178,7 +287,10 @@ export default function LinksPage() {
   const handleDeleteSection = async (id: string) => {
     const sec = sections.find((s) => s.id === id)
     const count = links.filter((l) => l.sectionId === id).length
-    const msg = count > 0 ? `Delete "${sec?.title}"?\n\nThis section contains ${count} link${count > 1 ? 's' : ''}.\n\nWhat should happen to these links?\n\n[OK] = Move links to No Section\n[Cancel] = Cancel` : `Delete "${sec?.title}"?`
+    const msg =
+      count > 0
+        ? `Delete "${sec?.title}"?\n\nThis section contains ${count} link${count > 1 ? 's' : ''}.\n\nWhat should happen to these links?\n\n[OK] = Move links to No Section\n[Cancel] = Cancel`
+        : `Delete "${sec?.title}"?`
     if (!confirm(msg)) return
     await api.sectionDelete(id)
     await reload()
@@ -199,7 +311,12 @@ export default function LinksPage() {
 
   const addLink = async (e: React.FormEvent) => {
     e.preventDefault()
-    const payload: Record<string, unknown> = { title: linkForm.title, url: linkForm.url, icon: linkForm.icon || null, sectionId: linkForm.sectionId || null }
+    const payload: Record<string, unknown> = {
+      title: linkForm.title,
+      url: linkForm.url,
+      icon: linkForm.icon || null,
+      sectionId: linkForm.sectionId || null,
+    }
     if (editingId) {
       await api.linkUpdate(editingId, payload)
       setEditingId(null)
@@ -224,7 +341,9 @@ export default function LinksPage() {
     const { active, over } = event
     if (!over || active.id === over.id) return
     // only reorder within same section
-    const sectionLinks = links.filter((l) => l.sectionId === sectionId).sort((a, b) => a.position - b.position)
+    const sectionLinks = links
+      .filter((l) => l.sectionId === sectionId)
+      .sort((a, b) => a.position - b.position)
     const oldIndex = sectionLinks.findIndex((l) => l.id === active.id)
     const newIndex = sectionLinks.findIndex((l) => l.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
@@ -247,7 +366,8 @@ export default function LinksPage() {
     const noneGroup = grouped['__none__'] || []
     // if moving within No Section, use newOrder, else use existing noneGroup
     const noneToUse = sectionId === null ? newOrder : noneGroup
-    for (const l of noneToUse.sort((a, b) => a.position - b.position)) if (!orderedIds.includes(l.id)) orderedIds.push(l.id)
+    for (const l of noneToUse.sort((a, b) => a.position - b.position))
+      if (!orderedIds.includes(l.id)) orderedIds.push(l.id)
     // include any remaining links not in groups (should not happen)
     for (const l of links) if (!orderedIds.includes(l.id)) orderedIds.push(l.id)
 
@@ -271,18 +391,47 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Links</h2>
-        <button onClick={() => setShowAddSection((v) => !v)} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            Profile content
+          </p>
+          <h2 className="mt-1 text-3xl font-bold tracking-tight">Links</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add, organize, and prioritize the places you want to share.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddSection((v) => !v)}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4" /> Add Section
         </button>
       </div>
 
       {showAddSection && (
-        <form onSubmit={handleAddSection} className="card p-4 flex gap-2">
-          <input value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="Section title (e.g. Social Media)" className="input flex-1" required autoFocus />
-          <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Create</button>
-          <button type="button" onClick={() => setShowAddSection(false)} className="rounded-md border px-4 py-2 text-sm">Cancel</button>
+        <form onSubmit={handleAddSection} className="card flex gap-2 rounded-2xl p-4">
+          <input
+            value={newSectionTitle}
+            onChange={(e) => setNewSectionTitle(e.target.value)}
+            placeholder="Section title (e.g. Social Media)"
+            className="input flex-1"
+            required
+            autoFocus
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Create
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAddSection(false)}
+            className="rounded-md border px-4 py-2 text-sm"
+          >
+            Cancel
+          </button>
         </form>
       )}
 
@@ -290,21 +439,42 @@ export default function LinksPage() {
         <div className="card p-8 text-center space-y-3">
           <Folder className="h-10 w-10 mx-auto text-muted-foreground" />
           <h3 className="font-semibold">Organize your links into sections</h3>
-          <p className="text-sm text-muted-foreground">Create sections to make your Linktree easier to navigate.</p>
-          <button onClick={() => setShowAddSection(true)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          <p className="text-sm text-muted-foreground">
+            Create sections to make your Linktree easier to navigate.
+          </p>
+          <button
+            onClick={() => setShowAddSection(true)}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
             <Plus className="h-4 w-4" /> Create Section
           </button>
         </div>
       )}
 
-      <form onSubmit={addLink} className="card p-4 space-y-3">
+      <form onSubmit={addLink} className="card space-y-4 rounded-2xl p-5 sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input value={linkForm.title} onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })} placeholder="Title (e.g. WhatsApp)" className="input" required />
-          <input value={linkForm.url} onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })} placeholder="https://..." className="input" required />
+          <input
+            value={linkForm.title}
+            onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })}
+            placeholder="Title (e.g. WhatsApp)"
+            className="input"
+            required
+          />
+          <input
+            value={linkForm.url}
+            onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
+            placeholder="https://..."
+            className="input"
+            required
+          />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Section</label>
-          <select value={linkForm.sectionId} onChange={(e) => setLinkForm({ ...linkForm, sectionId: e.target.value })} className="input">
+          <select
+            value={linkForm.sectionId}
+            onChange={(e) => setLinkForm({ ...linkForm, sectionId: e.target.value })}
+            className="input"
+          >
             <option value="">No Section</option>
             {sections.map((s) => (
               <option key={s.id} value={s.id}>
@@ -328,43 +498,82 @@ export default function LinksPage() {
                   title={opt.label}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="truncate w-full text-center text-[10px] leading-none">{opt.label}</span>
+                  <span className="truncate w-full text-center text-[10px] leading-none">
+                    {opt.label}
+                  </span>
                 </button>
               )
             })}
           </div>
-          <p className="text-xs text-muted-foreground">Choose the icon that appears next to your link (WhatsApp, Instagram, Google Sheet, etc.). Saved as <code className="bg-muted px-1 rounded">{linkForm.icon}</code></p>
+          <p className="text-xs text-muted-foreground">
+            Choose the icon that appears next to your link (WhatsApp, Instagram, Google Sheet,
+            etc.). Saved as <code className="bg-muted px-1 rounded">{linkForm.icon}</code>
+          </p>
         </div>
         <div className="flex gap-2">
-          <button type="submit" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow">
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow"
+          >
             {editingId ? 'Update link' : '+ Add link'}
           </button>
           {editingId && (
-            <button type="button" onClick={() => { setEditingId(null); setLinkForm({ title: '', url: '', icon: 'link', sectionId: '' }) }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null)
+                setLinkForm({ title: '', url: '', icon: 'link', sectionId: '' })
+              }}
+              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+            >
               Cancel
             </button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">Drag the handle on the left of each link to reorder. Use ON/OFF to hide without deleting.</p>
+        <p className="text-xs text-muted-foreground">
+          Drag the handle on the left of each link to reorder. Use ON/OFF to hide without deleting.
+        </p>
       </form>
 
       {/* Sections */}
       {hasSections ? (
-        <DndContext sensors={sectionSensors} collisionDetection={closestCenter} onDragEnd={handleSectionReorder}>
+        <DndContext
+          sensors={sectionSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleSectionReorder}
+        >
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-4">
               {sections.map((sec) => {
-                const secLinks = links.filter((l) => l.sectionId === sec.id).sort((a, b) => a.position - b.position)
+                const secLinks = links
+                  .filter((l) => l.sectionId === sec.id)
+                  .sort((a, b) => a.position - b.position)
                 return (
-                  <SortableSection key={sec.id} section={sec} onEdit={handleEditSection} onDelete={handleDeleteSection}>
+                  <SortableSection
+                    key={sec.id}
+                    section={sec}
+                    onEdit={handleEditSection}
+                    onDelete={handleDeleteSection}
+                  >
                     {secLinks.length === 0 ? (
                       <div className="text-center py-4 space-y-2 border-2 border-dashed rounded-lg">
-                        <p className="text-sm text-muted-foreground">No links in this section yet.</p>
-                        <p className="text-xs text-muted-foreground">Use the form above and select "{sec.title}" as section.</p>
+                        <p className="text-sm text-muted-foreground">
+                          No links in this section yet.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Use the form above and select "{sec.title}" as section.
+                        </p>
                       </div>
                     ) : (
-                      <DndContext sensors={linkSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleLinkDragEnd(e, sec.id)}>
-                        <SortableContext items={secLinks.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                      <DndContext
+                        sensors={linkSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(e) => handleLinkDragEnd(e, sec.id)}
+                      >
+                        <SortableContext
+                          items={secLinks.map((l) => l.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
                           <div className="space-y-2">
                             {secLinks.map((l) => (
                               <SortableLinkItem
@@ -372,7 +581,12 @@ export default function LinksPage() {
                                 link={l as never}
                                 onEdit={() => {
                                   setEditingId(l.id)
-                                  setLinkForm({ title: l.title, url: l.url, icon: l.icon || 'link', sectionId: l.sectionId || '' })
+                                  setLinkForm({
+                                    title: l.title,
+                                    url: l.url,
+                                    icon: l.icon || 'link',
+                                    sectionId: l.sectionId || '',
+                                  })
                                   window.scrollTo({ top: 0, behavior: 'smooth' })
                                 }}
                                 onToggle={() => toggleLink(l.id)}
@@ -383,7 +597,12 @@ export default function LinksPage() {
                         </SortableContext>
                       </DndContext>
                     )}
-                    {secLinks.length > 0 && <p className="text-xs text-muted-foreground">{secLinks.length} link{secLinks.length !== 1 ? 's' : ''} • Drag to reorder within section</p>}
+                    {secLinks.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {secLinks.length} link{secLinks.length !== 1 ? 's' : ''} • Drag to reorder
+                        within section
+                      </p>
+                    )}
                   </SortableSection>
                 )
               })}
@@ -395,17 +614,31 @@ export default function LinksPage() {
       {/* No Section links */}
       <div className="space-y-2">
         <h3 className="font-semibold flex items-center gap-2">
-          <LinkIcon className="h-4 w-4" /> {hasSections ? 'No Section' : 'Your Links'} <span className="text-xs font-normal text-muted-foreground">({noSectionLinks.length})</span>
+          <LinkIcon className="h-4 w-4" /> {hasSections ? 'No Section' : 'Your Links'}{' '}
+          <span className="text-xs font-normal text-muted-foreground">
+            ({noSectionLinks.length})
+          </span>
         </h3>
         {noSectionLinks.length === 0 ? (
           hasSections ? (
-            <p className="text-sm text-muted-foreground card p-4 text-center">No unsectioned links. All links are inside sections, or create one above.</p>
+            <p className="text-sm text-muted-foreground card p-4 text-center">
+              No unsectioned links. All links are inside sections, or create one above.
+            </p>
           ) : (
-            <p className="text-sm text-muted-foreground">No links yet. Add your first link above.</p>
+            <p className="text-sm text-muted-foreground">
+              No links yet. Add your first link above.
+            </p>
           )
         ) : (
-          <DndContext sensors={linkSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleLinkDragEnd(e, null)}>
-            <SortableContext items={noSectionLinks.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+          <DndContext
+            sensors={linkSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(e) => handleLinkDragEnd(e, null)}
+          >
+            <SortableContext
+              items={noSectionLinks.map((l) => l.id)}
+              strategy={verticalListSortingStrategy}
+            >
               <div className="space-y-2">
                 {noSectionLinks.map((l) => (
                   <SortableLinkItem
@@ -413,7 +646,12 @@ export default function LinksPage() {
                     link={l as never}
                     onEdit={() => {
                       setEditingId(l.id)
-                      setLinkForm({ title: l.title, url: l.url, icon: l.icon || 'link', sectionId: l.sectionId || '' })
+                      setLinkForm({
+                        title: l.title,
+                        url: l.url,
+                        icon: l.icon || 'link',
+                        sectionId: l.sectionId || '',
+                      })
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                     onToggle={() => toggleLink(l.id)}

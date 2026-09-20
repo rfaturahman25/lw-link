@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    './src/frontend/**/*.{js,jsx,ts,tsx}',
-    './public/index.html',
-  ],
+  content: ['./src/frontend/**/*.{js,jsx,ts,tsx}', './public/index.html'],
   darkMode: 'class',
   theme: {
     extend: {
@@ -97,6 +94,14 @@ export default {
           800: '#991b1b',
           900: '#7f1d1d',
         },
+        retro: {
+          teal: '#31AAA9',
+          cream: '#F8E0A4',
+          red: '#A82020',
+          wine: '#6C1A1A',
+          bg: '#FAF7F2',
+          border: '#E8D8C8',
+        },
       },
       fontFamily: {
         sans: [
@@ -141,14 +146,14 @@ export default {
         },
       },
       borderRadius: {
-        'xl': '1rem',
+        xl: '1rem',
         '2xl': '1.5rem',
         '3xl': '2rem',
       },
       boxShadow: {
-        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
-        'medium': '0 4px 20px -3px rgba(0, 0, 0, 0.1), 0 10px 30px -2px rgba(0, 0, 0, 0.08)',
-        'hard': '0 10px 40px -5px rgba(0, 0, 0, 0.15), 0 20px 50px -5px rgba(0, 0, 0, 0.1)',
+        soft: '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+        medium: '0 4px 20px -3px rgba(0, 0, 0, 0.1), 0 10px 30px -2px rgba(0, 0, 0, 0.08)',
+        hard: '0 10px 40px -5px rgba(0, 0, 0, 0.15), 0 20px 50px -5px rgba(0, 0, 0, 0.1)',
       },
     },
   },

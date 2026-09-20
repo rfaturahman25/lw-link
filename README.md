@@ -5,7 +5,7 @@ Internal Linktree-like application for Instagram bio. Simple, internal-only. Sta
 ## Features
 
 - **Auth:** Username/email + password (SHA-256 `password_hash` in D1), 24-hour session (httpOnly `SameSite=Lax` + Bearer), RBAC `super_admin`/`admin`/`user`
-- **Profile:** Unique username, displayName/bio/team/company/theme, `published` gate (unpublished → 404)
+- **Profile:** Unique username, displayName/bio/theme, `published` gate (unpublished → 404)
 - **Links:** CRUD, enable/disable, drag & drop reorder (`@dnd-kit`), icon picker (WA, IG, GSheet, etc.), sections/categories
 - **Public:** `/:username` → `GET /api/public/:username` (published + active only), QR, SEO meta, sections grouping
 - **Analytics:** `profile_view` + `link_click` (ip_hash, ua, referrer), dashboard with ranking, share donut, bar chart, 7-day time series, unique visitors, CTR
@@ -204,7 +204,7 @@ POST /api/auth/login  {identifier, password} -> {token, user} + Set-Cookie
 POST /api/auth/logout
 GET  /api/auth/session
 GET  /api/me  PUT /api/me  {username, displayName, avatarUrl}
-GET  /api/profile  PUT /api/profile  {bio, team, company, theme, ...}  PUT /api/profile/publish  {published}
+GET  /api/profile  PUT /api/profile  {bio, theme, ...}  PUT /api/profile/publish  {published}
 GET  /api/links  POST /api/links  {title, url, icon, sectionId}  PUT /api/links/reorder  {orderedIds}  PUT /api/links/:id  {title, url, icon, sectionId}  PUT /api/links/:id/toggle  DELETE /api/links/:id
 GET  /api/sections  POST /api/sections  {title}  PUT /api/sections/:id  {title}  DELETE /api/sections/:id  PUT /api/sections/reorder  {orderedIds}
 GET  /api/public/:username  POST /api/public/:username/view  POST /api/public/:username/click  {linkId}

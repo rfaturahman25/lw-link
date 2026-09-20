@@ -57,7 +57,9 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   html {
@@ -66,6 +68,33 @@
 }
 
 @layer components {
+  .dashboard-theme {
+    --background: 37 55% 96%;
+    --foreground: 0 61% 26%;
+    --card: 40 100% 99%;
+    --card-foreground: 0 61% 26%;
+    --popover: 40 100% 99%;
+    --popover-foreground: 0 61% 26%;
+    --primary: 179 55% 43%;
+    --primary-foreground: 0 61% 26%;
+    --secondary: 42 79% 95%;
+    --secondary-foreground: 0 61% 26%;
+    --muted: 31 39% 93%;
+    --muted-foreground: 0 21% 38%;
+    --accent: 42 79% 95%;
+    --accent-foreground: 0 61% 26%;
+    --border: 27 37% 85%;
+    --input: 27 37% 85%;
+    --ring: 179 55% 43%;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .dashboard-theme .card {
+    border-color: hsl(var(--border));
+    box-shadow: none;
+  }
+
   .btn {
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50;
   }

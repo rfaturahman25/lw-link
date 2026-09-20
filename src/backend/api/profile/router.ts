@@ -41,8 +41,6 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
     } else {
       const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() }
       if (body.bio !== undefined) updateData.bio = body.bio
-      if (body.team !== undefined) updateData.team = body.team
-      if (body.company !== undefined) updateData.company = body.company
       if (body.theme !== undefined) updateData.theme = body.theme
       if (body.backgroundColor !== undefined) updateData.backgroundColor = body.backgroundColor
       if (body.textColor !== undefined) updateData.textColor = body.textColor
@@ -59,7 +57,10 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
       await db.update(users).set({ displayName: body.displayName }).where(eq(users.id, user.id))
     }
     if (body.avatarUrl !== undefined) {
-      await db.update(users).set({ avatarUrl: body.avatarUrl || null }).where(eq(users.id, user.id))
+      await db
+        .update(users)
+        .set({ avatarUrl: body.avatarUrl || null })
+        .where(eq(users.id, user.id))
     }
     const rows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
     return c.json({ success: true, data: rows[0] })
@@ -74,13 +75,16 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
 profileRoutes.put('/publish', async (c) => {
   const user = c.get('user') as AuthUser
   const db = createDb(c.env.DB)
-  const body = await c.req.json().catch(() => ({})) as { published?: boolean }
+  const body = (await c.req.json().catch(() => ({}))) as { published?: boolean }
   const published = !!body.published
   const rows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
   if (rows.length === 0) {
     await db.insert(profiles).values({ userId: user.id, published })
   } else {
-    await db.update(profiles).set({ published, updatedAt: new Date().toISOString() }).where(eq(profiles.userId, user.id))
+    await db
+      .update(profiles)
+      .set({ published, updatedAt: new Date().toISOString() })
+      .where(eq(profiles.userId, user.id))
   }
   return c.json({ success: true, data: { published } })
 })

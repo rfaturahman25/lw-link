@@ -1,40 +1,96 @@
 import { useNavigate } from 'react-router-dom'
+import { BarChart3, Eye, Link2, MousePointerClick, Sparkles } from 'lucide-react'
 import { useDashboardContext } from './DashboardLayout'
 
 export default function OverviewPage() {
   const { profile, links, analytics } = useDashboardContext()
   const navigate = useNavigate()
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Overview</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            Dashboard
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Overview</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            A clear view of your public profile and link activity.
+          </p>
+        </div>
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${profile?.published ? 'bg-primary/15 text-primary' : 'bg-retro-cream text-retro-wine'}`}
+        >
+          {profile?.published ? 'Published profile' : 'Draft profile'}
+        </span>
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-4">
-          <p className="text-sm text-muted-foreground">Links</p>
-          <p className="text-2xl font-bold">{links.length}</p>
+        <div className="card rounded-2xl p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Links</p>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Link2 className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold tracking-tight">{links.length}</p>
+          <p className="mt-1 text-xs text-muted-foreground">links in your profile</p>
         </div>
-        <div className="card p-4">
-          <p className="text-sm text-muted-foreground">Views</p>
-          <p className="text-2xl font-bold">{analytics?.totalViews ?? 0}</p>
+        <div className="card rounded-2xl p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Views</p>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-retro-cream text-retro-wine">
+              <Eye className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold tracking-tight">{analytics?.totalViews ?? 0}</p>
+          <p className="mt-1 text-xs text-muted-foreground">profile visits recorded</p>
         </div>
-        <div className="card p-4">
-          <p className="text-sm text-muted-foreground">Clicks</p>
-          <p className="text-2xl font-bold">{analytics?.totalClicks ?? 0}</p>
+        <div className="card rounded-2xl p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Clicks</p>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-retro-red/10 text-retro-red">
+              <MousePointerClick className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-5 text-3xl font-bold tracking-tight">{analytics?.totalClicks ?? 0}</p>
+          <p className="mt-1 text-xs text-muted-foreground">link interactions recorded</p>
         </div>
-        <div className="card p-4">
-          <p className="text-sm text-muted-foreground">Status</p>
-          <p className="text-xl font-bold">{profile?.published ? 'Published' : 'Draft'}</p>
+        <div className="rounded-2xl bg-retro-wine p-4 text-retro-cream sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-retro-cream/75">Status</p>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-retro-cream/15">
+              <Sparkles className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-5 text-2xl font-bold tracking-tight">
+            {profile?.published ? 'Published' : 'Draft'}
+          </p>
+          <p className="mt-1 text-xs text-retro-cream/75">
+            {profile?.published ? 'visible to visitors' : 'not publicly visible'}
+          </p>
         </div>
       </div>
-      <div className="card p-4">
-        <h3 className="font-semibold mb-2">Quick actions</h3>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => navigate('/dashboard/links')} className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow">
+      <div className="card rounded-2xl p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold">Quick actions</h3>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => navigate('/dashboard/links')}
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
             Manage links
           </button>
-          <button onClick={() => navigate('/dashboard/profile')} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">
+          <button
+            onClick={() => navigate('/dashboard/profile')}
+            className="rounded-xl border px-4 py-2.5 text-sm font-medium hover:bg-accent"
+          >
             Edit profile
           </button>
-          <button onClick={() => navigate('/dashboard/analytics')} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">
+          <button
+            onClick={() => navigate('/dashboard/analytics')}
+            className="rounded-xl border px-4 py-2.5 text-sm font-medium hover:bg-accent"
+          >
             View analytics
           </button>
         </div>

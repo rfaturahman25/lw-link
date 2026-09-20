@@ -2,33 +2,46 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 
 export const users = sqliteTable('users', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(),
   username: text('username').notNull().unique(),
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
   passwordHash: text('password_hash'),
-  role: text('role', { enum: ['user', 'admin', 'super_admin'] }).notNull().default('user'),
-  status: text('status', { enum: ['active', 'disabled'] }).notNull().default('active'),
+  role: text('role', { enum: ['user', 'admin', 'super_admin'] })
+    .notNull()
+    .default('user'),
+  status: text('status', { enum: ['active', 'disabled'] })
+    .notNull()
+    .default('active'),
   lastLoginAt: text('last_login_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 })
 
 export const profiles = sqliteTable('profiles', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
   bio: text('bio'),
-  team: text('team'),
-  company: text('company'),
-  theme: text('theme', { enum: ['default', 'light', 'dark', 'minimal', 'gradient'] }).default('default'),
+  theme: text('theme', { enum: ['default', 'light', 'dark', 'minimal', 'gradient'] }).default(
+    'default'
+  ),
   backgroundColor: text('background_color').default('#ffffff'),
   textColor: text('text_color').default('#000000'),
   buttonStyle: text('button_style', { enum: ['rounded', 'square', 'pill'] }).default('rounded'),
   fontFamily: text('font_family').default('system-ui'),
   textAlignment: text('text_alignment', { enum: ['left', 'center', 'right'] }).default('center'),
   avatarShape: text('avatar_shape', { enum: ['circle', 'square', 'rounded'] }).default('circle'),
-  colorPalette: text('color_palette', { enum: ['ocean', 'sunset', 'forest', 'berry', 'midnight', 'candy', 'golden', 'monochrome'] }),
+  colorPalette: text('color_palette', {
+    enum: ['ocean', 'sunset', 'forest', 'berry', 'midnight', 'candy', 'golden', 'monochrome'],
+  }),
   logoUrl: text('logo_url'),
   published: integer('published', { mode: 'boolean' }).default(false),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
@@ -36,8 +49,12 @@ export const profiles = sqliteTable('profiles', {
 })
 
 export const sections = sqliteTable('sections', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   position: integer('position').notNull().default(0),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
@@ -45,8 +62,12 @@ export const sections = sqliteTable('sections', {
 })
 
 export const links = sqliteTable('links', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   sectionId: text('section_id').references(() => sections.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   url: text('url').notNull(),
@@ -59,8 +80,12 @@ export const links = sqliteTable('links', {
 })
 
 export const analyticsEvents = sqliteTable('analytics_events', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   linkId: text('link_id').references(() => links.id, { onDelete: 'set null' }),
   eventType: text('event_type', { enum: ['profile_view', 'link_click'] }).notNull(),
   userAgent: text('user_agent'),
@@ -71,8 +96,12 @@ export const analyticsEvents = sqliteTable('analytics_events', {
 })
 
 export const sessions = sqliteTable('sessions', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull().unique(),
   expiresAt: text('expires_at').notNull(),
   userAgent: text('user_agent'),
@@ -81,8 +110,12 @@ export const sessions = sqliteTable('sessions', {
 })
 
 export const auditLogs = sqliteTable('audit_logs', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  actorId: text('actor_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  actorId: text('actor_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   actorUsername: text('actor_username').notNull(),
   actorRole: text('actor_role').notNull(),
   action: text('action').notNull(),
