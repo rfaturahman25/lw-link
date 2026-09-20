@@ -1,8 +1,15 @@
-import type { ProfileTheme, ThemeButtonShape, ThemeHoverEffect, ProfileFont } from './types'
+import type {
+  ProfileTheme,
+  ThemeButtonShape,
+  ThemeCategory,
+  ThemeHoverEffect,
+  ProfileFont,
+} from './types'
 
 type ThemeInput = {
   id: string
   name: string
+  category: ThemeCategory
   background: ProfileTheme['background']
   colors: ProfileTheme['colors']
   fontFamily: ProfileFont
@@ -27,6 +34,7 @@ function defineTheme(input: ThemeInput): ProfileTheme {
   return {
     id: input.id,
     name: input.name,
+    category: input.category,
     background: input.background,
     colors: {
       text: input.colors.text,
@@ -66,6 +74,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'agate',
     name: 'Agate',
+    category: 'artistic',
     // Natural marble: layered light streaks over a deep stone base.
     background: {
       color: '#12141a',
@@ -86,6 +95,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'aurora',
     name: 'Aurora',
+    category: 'dark',
     // Fluid aurora ribbons of teal, violet and emerald.
     background: {
       color: '#070b14',
@@ -106,6 +116,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'bloom',
     name: 'Bloom',
+    category: 'vibrant',
     // Abstract wave pattern in soft pink/violet.
     background: { color: '#fdf2f8', image: WAVE_PATTERN, size: '120px 60px', repeat: 'repeat' },
     colors: { text: '#3b1d33', textSecondary: '#7c5b73', card: '#ffffff', cardOpacity: 0.82, button: '#9d174d', buttonText: '#ffffff', accent: '#db2777', socialIcon: '#9d174d' },
@@ -118,6 +129,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'ember',
     name: 'Ember',
+    category: 'vibrant',
     // Warm fire glow on a dark base.
     background: {
       color: '#140806',
@@ -138,6 +150,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'grid',
     name: 'Grid',
+    category: 'minimal',
     background: { color: '#ffffff', image: GRID_PATTERN, size: '28px 28px', repeat: 'repeat' },
     colors: { text: '#0f172a', textSecondary: '#64748b', card: '#ffffff', cardOpacity: 1, button: '#111827', buttonText: '#ffffff', accent: '#2563eb', socialIcon: '#475569' },
     fontFamily: 'dm-sans',
@@ -148,6 +161,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'mesh',
     name: 'Mesh',
+    category: 'minimal',
     background: {
       color: '#f8f7ff',
       image:
@@ -164,6 +178,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'nebula',
     name: 'Nebula',
+    category: 'dark',
     // Cosmic clouds of violet, pink and blue.
     background: {
       color: '#080616',
@@ -184,6 +199,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'opal',
     name: 'Opal',
+    category: 'minimal',
     // Iridescent pearl light with soft prism tints.
     background: {
       color: '#f7f5ff',
@@ -201,6 +217,7 @@ export const THEMES: ProfileTheme[] = [
   defineTheme({
     id: 'stardust',
     name: 'Stardust',
+    category: 'artistic',
     // Star field over deep navy with a soft glow.
     background: {
       color: '#0a0e1a',
@@ -223,6 +240,14 @@ export const THEMES: ProfileTheme[] = [
 ]
 
 export const DEFAULT_THEME_ID = 'mesh'
+
+// Presentation order + labels for the admin theme picker.
+export const THEME_CATEGORIES: { id: ThemeCategory; label: string }[] = [
+  { id: 'minimal', label: 'Minimal' },
+  { id: 'artistic', label: 'Artistic' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'vibrant', label: 'Vibrant' },
+]
 
 // Legacy color_palette values no longer exist as themes; map each to a surviving preset.
 export const LEGACY_PALETTE_MAP: Record<string, string> = {

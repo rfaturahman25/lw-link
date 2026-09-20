@@ -132,6 +132,26 @@
     background-repeat: var(--pp-bg-repeat, no-repeat);
     color: var(--pp-text, #0f172a);
     font-family: var(--pp-font, system-ui, sans-serif);
+    overflow-x: clip;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Container query root so the embedded admin preview composes exactly like a
+       real device: the preview frame width — not the browser viewport — decides
+       whether the mobile or desktop composition is used. */
+    container-type: inline-size;
+    container-name: pp;
+  }
+
+  /* The single content column. Mobile is edge-to-edge; desktop is a centered,
+     constrained column with more breathing room (see the media query below). */
+  .pp-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pp-section-gap, 1.4rem);
+    width: 100%;
+    max-width: var(--pp-content-width, 460px);
+    margin-inline: auto;
+    padding-inline: clamp(16px, 5vw, 24px);
+    padding-block: 32px 40px;
   }
 
   .pp-card {
@@ -143,6 +163,127 @@
     backdrop-filter: blur(var(--pp-card-blur, 0px));
   }
 
+  /* ---- Identity ------------------------------------------------------- */
+  .pp-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    text-align: var(--pp-align, center);
+  }
+
+  .pp-avatar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(84px, 22vw, 96px);
+    height: clamp(84px, 22vw, 96px);
+    margin-inline: auto;
+    overflow: hidden;
+    background-color: var(--pp-card, #ffffff);
+    border-radius: var(--pp-avatar-radius, 9999px);
+    box-shadow:
+      var(--pp-avatar-shadow, none),
+      0 0 0 var(--pp-avatar-ring-width, 3px) var(--pp-avatar-ring, transparent);
+  }
+
+  .pp-identity--left .pp-avatar {
+    margin-inline: 0;
+  }
+
+  /* Hexagon avatar: clip-path gives the shape, so the ring is suppressed. */
+  .pp-avatar--hex {
+    border-radius: 0;
+    box-shadow: none;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  }
+
+  /* Transparent PNG logo rendered without a container. */
+  .pp-avatar--plain {
+    width: auto;
+    height: auto;
+    max-width: min(200px, 70%);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .pp-name {
+    font-size: clamp(26px, 7.5vw, 34px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--pp-text);
+  }
+
+  .pp-name--gradient {
+    background-image: var(--pp-name-gradient, none);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .pp-bio {
+    font-size: clamp(14px, 3.6vw, 15px);
+    line-height: 1.6;
+    color: var(--pp-text-secondary);
+    max-width: 42ch;
+    margin-inline: auto;
+    text-wrap: pretty;
+  }
+
+  .pp-identity--left .pp-bio {
+    margin-inline: 0;
+  }
+
+  /* ---- Social row ----------------------------------------------------- */
+  .pp-social-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: var(--pp-align, center);
+    gap: 0.6rem;
+  }
+
+  .pp-social {
+    background-color: var(--pp-social-bg, var(--pp-card, #ffffff));
+    color: var(--pp-social-color, var(--pp-social, #475569));
+    border: 1px solid var(--pp-social-border, var(--pp-border, rgba(15, 23, 42, 0.08)));
+    box-shadow: var(--pp-shadow, none);
+  }
+
+  /* Icon-only social style: no surface, no border, no shadow. */
+  .pp-social-plain {
+    background-color: transparent;
+    color: var(--pp-social-color, var(--pp-social, #475569));
+    border: 0;
+    box-shadow: none;
+  }
+
+  /* ---- Sections + links ----------------------------------------------- */
+  .pp-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--pp-text-secondary);
+    text-align: var(--pp-align, center);
+  }
+
+  .pp-links {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--pp-link-gap, 0.7rem) * 1.6);
+  }
+
+  .pp-links-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pp-link-gap, 0.7rem);
+  }
+
   /* Link cards follow the theme's button shape/style (square/pill/outlined/elevated). */
   .pp-link {
     background-color: var(--pp-link-bg, var(--pp-card, #ffffff));
@@ -151,6 +292,30 @@
     border-color: var(--pp-link-border, var(--pp-border, rgba(15, 23, 42, 0.08)));
     border-radius: var(--pp-link-radius, 1rem);
     box-shadow: var(--pp-link-shadow, var(--pp-shadow, none));
+    min-height: 60px;
+  }
+
+  .pp-link-icon {
+    transition: transform 200ms ease-out;
+  }
+
+  /* Featured / promoted tile: visually distinct from standard links. */
+  .pp-featured {
+    display: block;
+    overflow: hidden;
+    background-color: var(--pp-card, #ffffff);
+    border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
+    border-radius: var(--pp-featured-radius, 1rem);
+    box-shadow: var(--pp-featured-shadow, var(--pp-shadow, none));
+  }
+
+  .pp-featured-img {
+    display: block;
+    width: 100%;
+    /* Mobile: a taller, more immersive featured image. */
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    transition: transform 400ms ease-out;
   }
 
   /* Quiet secondary action (share/copy) that still follows the theme surface. */
@@ -159,20 +324,6 @@
     color: var(--pp-text, #0f172a);
     border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
     border-radius: var(--pp-btn-radius, 0.75rem);
-  }
-
-  .pp-social {
-    background-color: var(--pp-card, #ffffff);
-    color: var(--pp-social, #475569);
-    border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
-    box-shadow: var(--pp-shadow, none);
-  }
-
-  /* Icon-only social style: no surface, no border, no shadow. */
-  .pp-social-plain {
-    background-color: transparent;
-    color: var(--pp-social, #475569);
-    border: 0;
   }
 
   .pp-btn {
@@ -203,6 +354,14 @@
       border-color: var(--pp-hover-border, var(--pp-border));
     }
 
+    .pp-link:hover .pp-link-icon {
+      transform: translateX(2px);
+    }
+
+    .pp-featured:hover .pp-featured-img {
+      transform: scale(1.03);
+    }
+
     .pp-social:hover {
       color: var(--pp-accent, #2563eb);
     }
@@ -227,13 +386,38 @@
     outline-offset: 2px;
   }
 
+  /* ---- Desktop composition: roomier whitespace, shorter rows ---------- */
+  @container pp (min-width: 520px) {
+    .pp-content {
+      padding-block: 56px 64px;
+      gap: calc(var(--pp-section-gap, 1.4rem) * 1.2);
+    }
+
+    .pp-identity {
+      gap: 0.9rem;
+    }
+
+    .pp-link {
+      min-height: 56px;
+    }
+
+    /* Desktop: wider featured crop, calmer vertical rhythm. */
+    .pp-featured-img {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .pp-interactive {
+    .pp-interactive,
+    .pp-link-icon,
+    .pp-featured-img {
       transition: none;
     }
 
     .pp-interactive:hover,
-    .pp-interactive:active {
+    .pp-interactive:active,
+    .pp-link:hover .pp-link-icon,
+    .pp-featured:hover .pp-featured-img {
       transform: none;
     }
   }

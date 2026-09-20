@@ -9,6 +9,7 @@ import {
   resolveShowShare,
   resolveTheme,
   themeToCssVars,
+  toDraftConfig,
 } from '@frontend/themes'
 
 const LEGACY_PALETTES = [
@@ -128,6 +129,59 @@ describe('theme config parsing and overrides', () => {
   })
 })
 
+describe('theme layout options', () => {
+  it('resolves layout options into CSS variables', () => {
+    const t = resolveTheme({
+      themeId: 'mesh',
+      avatarShape: 'hex',
+      nameTreatment: 'gradient',
+      contentWidth: 'wide',
+      density: 'compact',
+      profileAlign: 'left',
+    })
+    expect(t.layout.avatarShape).toBe('hex')
+    expect(t.layout.contentWidth).toBe('wide')
+    expect(t.layout.align).toBe('left')
+    const vars = themeToCssVars(t) as Record<string, string>
+    expect(vars['--pp-content-width']).toBe('520px')
+    expect(vars['--pp-avatar-radius']).toBe('0px')
+    expect(vars['--pp-name-gradient']).toContain('linear-gradient')
+    expect(vars['--pp-align']).toBe('left')
+  })
+
+  it('defaults layout options safely for old configs', () => {
+    const t = resolveTheme({ themeId: 'mesh' })
+    expect(t.layout).toEqual({
+      avatarShape: 'circle',
+      nameTreatment: 'solid',
+      socialIconStyle: 'surface',
+      contentWidth: 'cozy',
+      density: 'comfortable',
+      align: 'center',
+      featuredLinkId: null,
+    })
+  })
+
+  it('keeps newer curated fonts from legacy fontFamily values', () => {
+    const t = resolveProfileTheme({ themeConfig: null, colorPalette: null, fontFamily: 'outfit' })
+    expect(t.typography.fontFamily).toBe('outfit')
+  })
+
+  it('round-trips layout options through the draft config', () => {
+    const draft = toDraftConfig({
+      themeConfig: JSON.stringify({
+        themeId: 'aurora',
+        avatarShape: 'squircle',
+        contentWidth: 'compact',
+        featuredLinkId: 'link-1',
+      }),
+    })
+    expect(draft.avatarShape).toBe('squircle')
+    expect(draft.contentWidth).toBe('compact')
+    expect(draft.featuredLinkId).toBe('link-1')
+  })
+})
+
 describe('PublicProfileView', () => {
   it('renders profile, links and sections with a resolved theme', () => {
     render(
@@ -144,5 +198,29 @@ describe('PublicProfileView', () => {
     expect(screen.getByText('Jane Doe')).toBeInTheDocument()
     expect(screen.getByText('Hello there')).toBeInTheDocument()
     expect(screen.getByText('My Link')).toBeInTheDocument()
+  })
+
+  it('promotes a featured link with a thumbnail exactly once', () => {
+    render(
+      <PublicProfileView
+        displayName="Jane Doe"
+        links={[
+          {
+            id: 'f',
+            title: 'Featured',
+            url: 'https://example.com/f',
+            icon: 'link',
+            sectionId: null,
+            thumbnail: 'https://example.com/t.png',
+          },
+          { id: 'n', title: 'Normal', url: 'https://example.com/n', icon: 'link', sectionId: null },
+        ]}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+        featuredLinkId="f"
+      />
+    )
+    expect(screen.getAllByText('Featured')).toHaveLength(1)
+    expect(screen.getByText('Normal')).toBeInTheDocument()
   })
 })

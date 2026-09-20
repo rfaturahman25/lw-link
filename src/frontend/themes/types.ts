@@ -22,6 +22,9 @@ export type ThemeButtonShape = 'square' | 'rounded' | 'pill' | 'outlined' | 'ele
 
 export type ThemeHoverEffect = 'lift' | 'glow' | 'scale' | 'none'
 
+// Presentation grouping used by the admin theme picker.
+export type ThemeCategory = 'minimal' | 'artistic' | 'dark' | 'vibrant'
+
 export type ThemeBackground = {
   color: string
   image?: string
@@ -45,6 +48,7 @@ export type ThemeColors = {
 export type ProfileTheme = {
   id: string
   name: string
+  category: ThemeCategory
   background: ThemeBackground
   colors: ThemeColors
   typography: { fontFamily: ProfileFont }
@@ -78,12 +82,44 @@ export type ThemeOverrides = {
 export type SocialStyle = 'circle' | 'plain'
 export type LogoShape = 'plain' | 'circle'
 
+// Layout / identity options. These are additive, optional, and stored inside
+// theme_config so older configs keep working untouched.
+export type AvatarShape = 'circle' | 'rounded' | 'squircle' | 'square' | 'hex'
+export type NameTreatment = 'solid' | 'gradient'
+export type SocialIconStyle = 'surface' | 'tinted' | 'plain'
+export type ContentWidth = 'compact' | 'cozy' | 'wide'
+export type ContentDensity = 'compact' | 'comfortable' | 'spacious'
+export type ProfileAlign = 'center' | 'left'
+
+export type LayoutOptions = {
+  avatarShape?: AvatarShape
+  nameTreatment?: NameTreatment
+  socialIconStyle?: SocialIconStyle
+  contentWidth?: ContentWidth
+  density?: ContentDensity
+  profileAlign?: ProfileAlign
+  featuredLinkId?: string | null
+}
+
 export type StoredThemeConfig = {
   themeId: string
   overrides?: ThemeOverrides | null
   showShare?: boolean
   socialStyle?: SocialStyle
   logoShape?: LogoShape
+} & LayoutOptions
+
+// Resolved layout consumed by the renderer + CSS variable builder. Every field
+// has a concrete value so components never branch on "undefined".
+export type ResolvedLayout = {
+  avatarShape: AvatarShape
+  nameTreatment: NameTreatment
+  socialIconStyle: SocialIconStyle
+  contentWidth: ContentWidth
+  density: ContentDensity
+  align: ProfileAlign
+  featuredLinkId: string | null
 }
 
-export type ResolvedTheme = ProfileTheme
+// A preset theme plus the resolved layout. The renderer only ever needs this.
+export type ResolvedTheme = ProfileTheme & { layout: ResolvedLayout }

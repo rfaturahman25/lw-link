@@ -5,10 +5,13 @@ import { api } from '../../services/api'
 import PublicProfileView from '../../components/profile/PublicProfileView'
 import {
   loadFont,
+  resolveFeaturedLinkId,
   resolveLogoShape,
   resolveProfileTheme,
   resolveShowShare,
   resolveSocialStyle,
+  resolveTheme,
+  themeToCssVars,
 } from '../../themes'
 
 type ProfileData = {
@@ -35,10 +38,71 @@ type ProfileData = {
     type?: string | null
     metadata?: string | null
     showUrl?: boolean | null
+    thumbnail?: string | null
   }>
   sections?: Array<{ id: string; title: string; position: number }>
   socials?: Array<{ platform: string; value: string }>
 }
+
+// Neutral-but-themed placeholder: uses the default theme tokens so the page
+// never flashes an unrelated gray shell before the profile resolves.
+const LoadingState = () => (
+  <div
+    className="pp-root w-full min-h-[100dvh] min-h-screen"
+    style={themeToCssVars(resolveTheme(null))}
+  >
+    <div className="pp-content animate-pulse motion-reduce:animate-none" aria-busy="true">
+      <div className="space-y-3">
+        <div className="pp-avatar mx-auto" />
+        <div className="mx-auto h-7 w-40 rounded-full" style={{ background: 'var(--pp-card)' }} />
+        <div className="mx-auto h-4 w-56 rounded-full" style={{ background: 'var(--pp-card)' }} />
+      </div>
+      <div className="pp-links">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="pp-link" aria-hidden="true" />
+        ))}
+      </div>
+      <span className="sr-only">Loading profile…</span>
+    </div>
+  </div>
+)
+
+const ErrorState = ({ message }: { message: string }) => (
+  <div
+    className="pp-root w-full min-h-[100dvh] min-h-screen"
+    style={themeToCssVars(resolveTheme(null))}
+  >
+    <div className="pp-content">
+      <div className="pp-card mx-auto mt-10 w-full max-w-md space-y-5 p-8 text-center">
+        <div
+          className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full"
+          style={{ background: 'var(--pp-accent-soft)', color: 'var(--pp-accent)' }}
+        >
+          <LinkIcon className="h-8 w-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--pp-text)' }}>
+            Page not found
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--pp-text-secondary)' }}>
+            {message}
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <a
+            href="/login"
+            className="pp-btn pp-interactive inline-flex items-center justify-center px-6 py-2.5 text-sm font-medium"
+          >
+            Go to login
+          </a>
+        </div>
+        <p className="text-xs" style={{ color: 'var(--pp-text-secondary)', opacity: 0.7 }}>
+          Lensa Links
+        </p>
+      </div>
+    </div>
+  </div>
+)
 
 const PublicProfilePage = () => {
   const { username } = useParams<{ username: string }>()
@@ -94,12 +158,18 @@ const PublicProfilePage = () => {
         setOg('og:description', desc.slice(0, 200))
         setOg('og:url', `${window.location.origin}/@${res.data.user.username}`)
         if (res.data.user.avatarUrl) setOg('og:image', res.data.user.avatarUrl)
+        // Reflect the profile theme in browser chrome / mobile address bar.
+        const resolved = resolveProfileTheme(res.data.profile)
+        const themeColor = document.querySelector('meta[name="theme-color"]')
+        if (themeColor) themeColor.setAttribute('content', resolved.background.color)
         api.trackView(clean).catch(() => {})
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : 'Not found'
         setError(
-          msg.includes('404') || msg.includes('not') ? 'Profile not found or unpublished' : msg
+          msg.includes('404') || msg.includes('not')
+            ? 'The profile you are looking for does not exist or may have been removed.'
+            : 'Something went wrong while loading this profile. Please try again later.'
         )
       })
       .finally(() => setLoading(false))
@@ -111,45 +181,8 @@ const PublicProfilePage = () => {
     loadFont(themeFont)
   }, [themeFont])
 
-  // Themed loading / error keep neutral (not palette) to avoid flash — full viewport, no app shell
-  if (loading)
-    return (
-      <div className="min-h-[100dvh] min-h-screen w-full flex items-center justify-center bg-[#f8fafc]">
-        <p className="py-16 text-center text-sm text-muted-foreground">Loading profile…</p>
-      </div>
-    )
-  if (error || !data)
-    return (
-      <div className="min-h-[100dvh] min-h-screen w-full bg-[#f8fafc] flex items-center justify-center px-4">
-        <div className="max-w-lg mx-auto text-center space-y-6 py-16">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
-            <LinkIcon className="h-8 w-8" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold">404</h1>
-            <h2 className="text-xl font-semibold">This page doesn't exist</h2>
-            <p className="text-sm text-muted-foreground">
-              The profile you're looking for doesn't exist or may have been removed.
-            </p>
-          </div>
-          <div className="flex justify-center gap-3">
-            <a
-              href="/"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground cursor-pointer transition-all duration-200 ease-out hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.97] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:transform-none"
-            >
-              Back to Home
-            </a>
-            <a
-              href="/login"
-              className="inline-flex items-center justify-center rounded-md border bg-white px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 ease-out hover:bg-accent hover:-translate-y-0.5 hover:shadow-sm hover:border-black/10 active:scale-[0.97] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:transform-none"
-            >
-              Go to Login
-            </a>
-          </div>
-          <p className="text-xs text-muted-foreground">Lensa Links</p>
-        </div>
-      </div>
-    )
+  if (loading) return <LoadingState />
+  if (error || !data) return <ErrorState message={error || 'Profile not found.'} />
 
   const profileUrl = `${window.location.origin}/@${data.user.username}`
   const theme = resolveProfileTheme(data.profile)
@@ -170,6 +203,7 @@ const PublicProfilePage = () => {
       showShare={resolveShowShare(data.profile)}
       socialStyle={resolveSocialStyle(data.profile)}
       logoShape={resolveLogoShape(data.profile)}
+      featuredLinkId={resolveFeaturedLinkId(data.profile)}
       interactive
       onLinkClick={(linkId) => api.trackClick(clean, linkId).catch(() => {})}
       onSocialClick={(platform) => api.trackSocialClick(clean, platform).catch(() => {})}

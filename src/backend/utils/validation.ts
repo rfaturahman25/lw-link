@@ -32,6 +32,12 @@ const fontFamilySchema = z.enum([
   'vt323',
 ])
 const buttonShapeSchema = z.enum(['square', 'rounded', 'pill', 'outlined', 'elevated'])
+const avatarShapeSchema = z.enum(['circle', 'rounded', 'squircle', 'square', 'hex'])
+const nameTreatmentSchema = z.enum(['solid', 'gradient'])
+const socialIconStyleSchema = z.enum(['surface', 'tinted', 'plain'])
+const contentWidthSchema = z.enum(['compact', 'cozy', 'wide'])
+const contentDensitySchema = z.enum(['compact', 'comfortable', 'spacious'])
+const profileAlignSchema = z.enum(['center', 'left'])
 
 // Theme system: profiles.theme_config stores { themeId, overrides } as JSON text.
 const themeOverridesSchema = z.object({
@@ -52,6 +58,14 @@ const themeConfigSchema = z.object({
   showShare: z.boolean().optional(),
   socialStyle: z.enum(['circle', 'plain']).optional(),
   logoShape: z.enum(['plain', 'circle']).optional(),
+  // Layout / identity options (all optional; unknown older configs stay valid).
+  avatarShape: avatarShapeSchema.optional(),
+  nameTreatment: nameTreatmentSchema.optional(),
+  socialIconStyle: socialIconStyleSchema.optional(),
+  contentWidth: contentWidthSchema.optional(),
+  density: contentDensitySchema.optional(),
+  profileAlign: profileAlignSchema.optional(),
+  featuredLinkId: z.string().max(64).optional().nullable(),
 })
 
 export const usernameSchema = z

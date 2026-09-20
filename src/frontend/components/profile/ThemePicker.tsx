@@ -3,12 +3,19 @@ import { Check, Palette, RotateCcw } from 'lucide-react'
 import {
   FONT_OPTIONS,
   THEMES,
+  THEME_CATEGORIES,
   getThemeById,
   loadAllFonts,
   resolveTheme,
   themeToCssVars,
 } from '../../themes'
-import type { ProfileFont, StoredThemeConfig, ThemeButtonShape, ThemeOverrides } from '../../themes'
+import type {
+  ProfileTheme,
+  ProfileFont,
+  StoredThemeConfig,
+  ThemeButtonShape,
+  ThemeOverrides,
+} from '../../themes'
 
 const BUTTON_SHAPES: { value: ThemeButtonShape; label: string }[] = [
   { value: 'square', label: 'Square' },
@@ -28,6 +35,72 @@ const COLOR_FIELDS = [
 type Props = {
   config: StoredThemeConfig
   onChange: (config: StoredThemeConfig) => void
+}
+
+// A miniature but faithful profile surface so presets read as designs, not
+// form controls. It renders through the same CSS variables as the real page.
+function ThemeCard({
+  theme,
+  selected,
+  onSelect,
+}: {
+  theme: ProfileTheme
+  selected: boolean
+  onSelect: () => void
+}) {
+  const preview = resolveTheme({ themeId: theme.id, overrides: {} })
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`relative overflow-hidden rounded-xl border text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        selected
+          ? 'border-primary ring-2 ring-primary/40'
+          : 'border-border hover:border-muted-foreground/40 hover:shadow-sm'
+      }`}
+    >
+      <div
+        className="pp-root flex h-28 w-full flex-col items-center justify-center gap-1.5 p-3"
+        style={themeToCssVars(preview)}
+      >
+        <div
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: '9999px',
+            background: 'var(--pp-card)',
+            boxShadow: '0 0 0 2px var(--pp-avatar-ring)',
+          }}
+        />
+        <div
+          style={{ width: 54, height: 6, borderRadius: 999, background: 'var(--pp-text)', opacity: 0.85 }}
+        />
+        <div
+          style={{
+            width: 96,
+            height: 12,
+            borderRadius: 'var(--pp-link-radius)',
+            background: 'var(--pp-link-bg)',
+            border: '1px solid var(--pp-link-border)',
+          }}
+        />
+        <div
+          style={{
+            width: 96,
+            height: 12,
+            borderRadius: 'var(--pp-link-radius)',
+            background: 'var(--pp-link-bg)',
+            border: '1px solid var(--pp-link-border)',
+          }}
+        />
+      </div>
+      <div className="flex items-center justify-between px-3 py-2">
+        <span className="text-xs font-medium">{theme.name}</span>
+        {selected && <Check className="h-3.5 w-3.5 text-primary" />}
+      </div>
+    </button>
+  )
 }
 
 export default function ThemePicker({ config, onChange }: Props) {
@@ -51,38 +124,27 @@ export default function ThemePicker({ config, onChange }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {THEMES.map((t) => {
-          const selected = t.id === config.themeId
-          const preview = resolveTheme({ themeId: t.id, overrides: selected ? overrides : {} })
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => onChange({ ...config, themeId: t.id, overrides })}
-              aria-pressed={selected}
-              className={`relative overflow-hidden rounded-xl border text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                selected
-                  ? 'border-primary ring-2 ring-primary/40'
-                  : 'border-border hover:border-muted-foreground/40 hover:shadow-sm'
-              }`}
-            >
-              <div className="pp-root h-24 w-full p-3" style={themeToCssVars(preview)}>
-                <div className="pp-card px-2 py-1">
-                  <p className="truncate text-[11px] font-semibold" style={{ color: 'var(--pp-text)' }}>
-                    {t.name}
-                  </p>
-                </div>
-                <div className="pp-btn mt-2 inline-flex px-3 py-1 text-[10px] font-medium">Button</div>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-xs font-medium">{t.name}</span>
-                {selected && <Check className="h-3.5 w-3.5 text-primary" />}
-              </div>
-            </button>
-          )
-        })}
-      </div>
+      {THEME_CATEGORIES.map((cat) => {
+        const items = THEMES.filter((t) => t.category === cat.id)
+        if (items.length === 0) return null
+        return (
+          <div key={cat.id} className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {cat.label}
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {items.map((t) => (
+                <ThemeCard
+                  key={t.id}
+                  theme={t}
+                  selected={t.id === config.themeId}
+                  onSelect={() => onChange({ ...config, themeId: t.id, overrides })}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })}
 
       <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
         <div className="flex items-center justify-between gap-3">

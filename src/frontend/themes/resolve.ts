@@ -1,33 +1,58 @@
 import type { CSSProperties } from 'react'
-import { fontStack } from './fonts'
+import { FONT_OPTIONS, fontStack } from './fonts'
 import { DEFAULT_THEME_ID, THEME_MAP, getThemeById } from './presets'
 import type {
+  AvatarShape,
+  ContentDensity,
+  ContentWidth,
   LogoShape,
+  NameTreatment,
+  ProfileAlign,
   ProfileFont,
   ProfileTheme,
+  ResolvedLayout,
   ResolvedTheme,
+  SocialIconStyle,
   SocialStyle,
   StoredThemeConfig,
   ThemeButtonShape,
   ThemeOverrides,
 } from './types'
 
-const FONTS: ProfileFont[] = [
-  'inter',
-  'dm-sans',
-  'poppins',
-  'manrope',
-  'plus-jakarta-sans',
-  'space-grotesk',
-  'playfair-display',
-]
+// Single source of truth: the font allowlist is derived from FONT_OPTIONS so the
+// resolver can never drift from the fonts the UI actually offers.
+const FONTS: ProfileFont[] = FONT_OPTIONS.map((f) => f.value)
 const SHAPES: ThemeButtonShape[] = ['square', 'rounded', 'pill', 'outlined', 'elevated']
+const AVATAR_SHAPES: AvatarShape[] = ['circle', 'rounded', 'squircle', 'square', 'hex']
+const NAME_TREATMENTS: NameTreatment[] = ['solid', 'gradient']
+const SOCIAL_ICON_STYLES: SocialIconStyle[] = ['surface', 'tinted', 'plain']
+const CONTENT_WIDTHS: ContentWidth[] = ['compact', 'cozy', 'wide']
+const DENSITIES: ContentDensity[] = ['compact', 'comfortable', 'spacious']
+const PROFILE_ALIGNS: ProfileAlign[] = ['center', 'left']
 
 export function isProfileFont(v: unknown): v is ProfileFont {
   return typeof v === 'string' && (FONTS as string[]).includes(v)
 }
 export function isButtonShape(v: unknown): v is ThemeButtonShape {
   return typeof v === 'string' && (SHAPES as string[]).includes(v)
+}
+function isAvatarShape(v: unknown): v is AvatarShape {
+  return typeof v === 'string' && (AVATAR_SHAPES as string[]).includes(v)
+}
+function isNameTreatment(v: unknown): v is NameTreatment {
+  return typeof v === 'string' && (NAME_TREATMENTS as string[]).includes(v)
+}
+function isSocialIconStyle(v: unknown): v is SocialIconStyle {
+  return typeof v === 'string' && (SOCIAL_ICON_STYLES as string[]).includes(v)
+}
+function isContentWidth(v: unknown): v is ContentWidth {
+  return typeof v === 'string' && (CONTENT_WIDTHS as string[]).includes(v)
+}
+function isDensity(v: unknown): v is ContentDensity {
+  return typeof v === 'string' && (DENSITIES as string[]).includes(v)
+}
+function isProfileAlign(v: unknown): v is ProfileAlign {
+  return typeof v === 'string' && (PROFILE_ALIGNS as string[]).includes(v)
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -53,14 +78,29 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
   if (typeof cfg.themeId !== 'string' || !THEME_MAP[cfg.themeId]) return null
   const overrides = cfg.overrides && typeof cfg.overrides === 'object' ? cfg.overrides : null
   const showShare = typeof cfg.showShare === 'boolean' ? cfg.showShare : undefined
-  const socialStyle = cfg.socialStyle === 'plain' || cfg.socialStyle === 'circle' ? cfg.socialStyle : undefined
-  const logoShape = cfg.logoShape === 'plain' || cfg.logoShape === 'circle' ? cfg.logoShape : undefined
+  const socialStyle =
+    cfg.socialStyle === 'plain' || cfg.socialStyle === 'circle' ? cfg.socialStyle : undefined
+  const logoShape =
+    cfg.logoShape === 'plain' || cfg.logoShape === 'circle' ? cfg.logoShape : undefined
+  const featuredLinkId =
+    typeof cfg.featuredLinkId === 'string' && cfg.featuredLinkId.length > 0
+      ? cfg.featuredLinkId
+      : cfg.featuredLinkId === null
+        ? null
+        : undefined
   return {
     themeId: cfg.themeId,
     overrides,
     ...(showShare !== undefined ? { showShare } : {}),
     ...(socialStyle !== undefined ? { socialStyle } : {}),
     ...(logoShape !== undefined ? { logoShape } : {}),
+    ...(isAvatarShape(cfg.avatarShape) ? { avatarShape: cfg.avatarShape } : {}),
+    ...(isNameTreatment(cfg.nameTreatment) ? { nameTreatment: cfg.nameTreatment } : {}),
+    ...(isSocialIconStyle(cfg.socialIconStyle) ? { socialIconStyle: cfg.socialIconStyle } : {}),
+    ...(isContentWidth(cfg.contentWidth) ? { contentWidth: cfg.contentWidth } : {}),
+    ...(isDensity(cfg.density) ? { density: cfg.density } : {}),
+    ...(isProfileAlign(cfg.profileAlign) ? { profileAlign: cfg.profileAlign } : {}),
+    ...(featuredLinkId !== undefined ? { featuredLinkId } : {}),
   }
 }
 
@@ -88,7 +128,30 @@ export function resolveLogoShape(
   return cfg?.logoShape === 'plain' ? 'plain' : 'circle'
 }
 
-function applyOverrides(theme: ProfileTheme, o: ThemeOverrides): ResolvedTheme {
+// The id of the link the owner promoted to the featured tile, if any.
+export function resolveFeaturedLinkId(
+  profile: { themeConfig?: unknown } | null | undefined
+): string | null {
+  const cfg = parseStoredThemeConfig(profile?.themeConfig)
+  return cfg?.featuredLinkId ?? null
+}
+
+function resolveLayout(config: StoredThemeConfig | null): ResolvedLayout {
+  const socialIconStyle: SocialIconStyle =
+    config?.socialIconStyle ??
+    (config?.socialStyle === 'plain' ? 'plain' : 'surface')
+  return {
+    avatarShape: config?.avatarShape ?? 'circle',
+    nameTreatment: config?.nameTreatment ?? 'solid',
+    socialIconStyle,
+    contentWidth: config?.contentWidth ?? 'cozy',
+    density: config?.density ?? 'comfortable',
+    align: config?.profileAlign ?? 'center',
+    featuredLinkId: config?.featuredLinkId ?? null,
+  }
+}
+
+function applyOverrides(theme: ProfileTheme, o: ThemeOverrides): ProfileTheme {
   return {
     ...theme,
     colors: {
@@ -131,7 +194,7 @@ export function resolveTheme(
     getThemeById(legacy?.colorPalette) ||
     THEME_MAP[DEFAULT_THEME_ID]
   const overrides = config ? config.overrides || {} : legacyOverrides(legacy)
-  return applyOverrides(base, overrides)
+  return { ...applyOverrides(base, overrides), layout: resolveLayout(config) }
 }
 
 export function resolveProfileTheme(
@@ -172,6 +235,15 @@ export function toDraftConfig(
       ...(parsed.showShare !== undefined ? { showShare: parsed.showShare } : {}),
       ...(parsed.socialStyle !== undefined ? { socialStyle: parsed.socialStyle } : {}),
       ...(parsed.logoShape !== undefined ? { logoShape: parsed.logoShape } : {}),
+      ...(parsed.avatarShape !== undefined ? { avatarShape: parsed.avatarShape } : {}),
+      ...(parsed.nameTreatment !== undefined ? { nameTreatment: parsed.nameTreatment } : {}),
+      ...(parsed.socialIconStyle !== undefined
+        ? { socialIconStyle: parsed.socialIconStyle }
+        : {}),
+      ...(parsed.contentWidth !== undefined ? { contentWidth: parsed.contentWidth } : {}),
+      ...(parsed.density !== undefined ? { density: parsed.density } : {}),
+      ...(parsed.profileAlign !== undefined ? { profileAlign: parsed.profileAlign } : {}),
+      ...(parsed.featuredLinkId !== undefined ? { featuredLinkId: parsed.featuredLinkId } : {}),
     }
   }
   const legacyId = getThemeById(profile?.colorPalette)?.id || DEFAULT_THEME_ID
@@ -191,7 +263,7 @@ type ButtonVars = {
   shadow: string
 }
 
-function buttonVars(theme: ResolvedTheme): ButtonVars {
+function buttonVars(theme: ProfileTheme): ButtonVars {
   const c = theme.colors
   switch (theme.button.shape) {
     case 'square':
@@ -208,7 +280,7 @@ function buttonVars(theme: ResolvedTheme): ButtonVars {
   }
 }
 
-function hoverVars(theme: ResolvedTheme): { lift: string; scale: string; shadow: string } {
+function hoverVars(theme: ProfileTheme): { lift: string; scale: string; shadow: string } {
   const s = theme.effects.shadowHover
   switch (theme.effects.hover) {
     case 'glow':
@@ -223,10 +295,37 @@ function hoverVars(theme: ResolvedTheme): { lift: string; scale: string; shadow:
   }
 }
 
+const CONTENT_WIDTH_PX: Record<ContentWidth, string> = {
+  compact: '400px',
+  cozy: '460px',
+  wide: '520px',
+}
+
+const GAP_REM: Record<ContentDensity, string> = {
+  compact: '0.9rem',
+  comfortable: '1.4rem',
+  spacious: '2rem',
+}
+
+const LINK_GAP_REM: Record<ContentDensity, string> = {
+  compact: '0.5rem',
+  comfortable: '0.7rem',
+  spacious: '0.95rem',
+}
+
+const AVATAR_RADIUS: Record<AvatarShape, string> = {
+  circle: '9999px',
+  rounded: '1.35rem',
+  squircle: '30%',
+  square: '0.5rem',
+  hex: '0px',
+}
+
 // Single source of truth for theme -> CSS variables. Both the public profile and the
 // admin preview render through these variables, so they can never drift apart.
 export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
   const c = theme.colors
+  const layout = theme.layout
   const btn = buttonVars(theme)
   const hover = hoverVars(theme)
   const outlined = theme.button.shape === 'outlined'
@@ -250,6 +349,15 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     : theme.isDark
       ? 'rgba(255,255,255,0.32)'
       : 'rgba(15,23,42,0.16)'
+  const socialSurface =
+    layout.socialIconStyle === 'surface'
+      ? c.card
+      : layout.socialIconStyle === 'tinted'
+        ? hexToRgba(c.accent, 0.14)
+        : 'transparent'
+  const socialColor = layout.socialIconStyle === 'tinted' ? c.accent : c.socialIcon
+  const socialBorder =
+    layout.socialIconStyle === 'surface' ? theme.effects.border : 'transparent'
   return {
     '--pp-bg-color': theme.background.color,
     '--pp-bg-image': theme.background.image || 'none',
@@ -289,5 +397,25 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     '--pp-hover-scale': hover.scale,
     '--pp-hover-shadow': hover.shadow,
     '--pp-hover-border': hoverBorder,
+    // --- Layout / identity tokens ---------------------------------------
+    '--pp-content-width': CONTENT_WIDTH_PX[layout.contentWidth],
+    '--pp-section-gap': GAP_REM[layout.density],
+    '--pp-link-gap': LINK_GAP_REM[layout.density],
+    '--pp-avatar-radius': AVATAR_RADIUS[layout.avatarShape],
+    '--pp-avatar-ring': hexToRgba(c.accent, 0.55),
+    '--pp-avatar-ring-width': '3px',
+    '--pp-avatar-shadow': theme.isDark
+      ? '0 12px 30px rgba(0,0,0,0.5)'
+      : '0 10px 26px rgba(15,23,42,0.16)',
+    '--pp-name-gradient':
+      layout.nameTreatment === 'gradient'
+        ? `linear-gradient(100deg, ${c.accent} 0%, ${c.text} 100%)`
+        : 'none',
+    '--pp-social-bg': socialSurface,
+    '--pp-social-color': socialColor,
+    '--pp-social-border': socialBorder,
+    '--pp-featured-radius': theme.effects.cardRadius || '1rem',
+    '--pp-featured-shadow': theme.effects.shadow,
+    '--pp-align': layout.align === 'left' ? 'left' : 'center',
   } as CSSProperties
 }

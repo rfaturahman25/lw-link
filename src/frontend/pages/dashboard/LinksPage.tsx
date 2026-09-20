@@ -4,6 +4,7 @@ import { api } from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import ProfilePreview from '../../components/profile/ProfilePreview'
 import {
+  resolveFeaturedLinkId,
   resolveLogoShape,
   resolveProfileTheme,
   resolveShowShare,
@@ -303,6 +304,7 @@ export default function LinksPage() {
         type?: string | null
         metadata?: string | null
         showUrl?: boolean | null
+        thumbnail?: string | null
         enabled: boolean
         sectionId: string | null
         position: number
@@ -348,6 +350,7 @@ export default function LinksPage() {
         headerStyle={(profile?.headerStyle as 'classic' | 'hero' | 'banner' | 'shape') ?? 'classic'}
         bannerUrl={profile?.bannerUrl ?? null}
         logoShape={resolveLogoShape(profile)}
+        featuredLinkId={resolveFeaturedLinkId(profile)}
       />
     ),
     [previewTheme, profile, user, links, sections, socials, previewUrl]
@@ -361,6 +364,7 @@ export default function LinksPage() {
     sectionId: '' as string,
     showLocation: true,
     showUrl: true,
+    thumbnail: '' as string,
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newSectionTitle, setNewSectionTitle] = useState('')
@@ -368,6 +372,7 @@ export default function LinksPage() {
   const [sectionError, setSectionError] = useState('')
   const [linkErrors, setLinkErrors] = useState<{ title?: string; url?: string }>({})
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingThumb, setUploadingThumb] = useState(false)
 
   // Memoised so unrelated form edits don't re-render all icon buttons (perceived lag).
   const iconButtons = useMemo(
@@ -452,6 +457,7 @@ export default function LinksPage() {
       url: linkForm.url.trim(),
       icon: linkForm.icon || null,
       sectionId: linkForm.sectionId || null,
+      thumbnail: linkForm.thumbnail.trim() || null,
     }
     if (isMapsUrl(linkForm.url)) payload.showLocation = linkForm.showLocation
     payload.showUrl = linkForm.showUrl
@@ -463,13 +469,29 @@ export default function LinksPage() {
       } else {
         await api.linkCreate(payload)
       }
-      setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true })
+      setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true, thumbnail: '' })
       setLinkErrors({})
       await reload()
     } catch (err: unknown) {
       setLinkErrors({ url: err instanceof Error ? err.message : 'Failed to save link.' })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const uploadThumbnail = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingThumb(true)
+    try {
+      const res = (await api.uploadImage(file)) as { data?: { url?: string } }
+      const url = res.data?.url
+      if (url) setLinkForm((f) => ({ ...f, thumbnail: url }))
+    } catch (err: unknown) {
+      setLinkErrors({ url: err instanceof Error ? err.message : 'Upload failed' })
+    } finally {
+      setUploadingThumb(false)
+      e.target.value = ''
     }
   }
 
@@ -733,6 +755,52 @@ export default function LinksPage() {
         </label>
 
         <div className="space-y-2">
+          <label className="text-sm font-medium">Thumbnail (optional)</label>
+          <div className="flex flex-wrap gap-2">
+            <input
+              value={linkForm.thumbnail}
+              onChange={(e) => setLinkForm({ ...linkForm, thumbnail: e.target.value })}
+              placeholder="https://... or upload"
+              className="input min-w-[180px] flex-1"
+            />
+            <label
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
+                uploadingThumb ? 'opacity-50' : 'hover:bg-accent'
+              }`}
+            >
+              {uploadingThumb ? 'Uploading…' : 'Upload'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                disabled={uploadingThumb}
+                onChange={uploadThumbnail}
+              />
+            </label>
+            {linkForm.thumbnail && (
+              <button
+                type="button"
+                onClick={() => setLinkForm({ ...linkForm, thumbnail: '' })}
+                className="rounded-md border px-3 py-2 text-sm text-red-600 hover:bg-accent"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          {linkForm.thumbnail && (
+            <img
+              src={linkForm.thumbnail}
+              alt="Thumbnail preview"
+              className="h-24 w-full rounded-lg object-cover"
+            />
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            A thumbnail lets this link become the optional featured tile — promote it in Profile →
+            Layout &amp; details.
+          </p>
+        </div>
+
+        <div className="space-y-2">
           <label className="text-sm font-medium">Text alignment</label>
           <div className="flex gap-2">
             {(['left', 'center', 'right'] as const).map((a) => (
@@ -791,7 +859,7 @@ export default function LinksPage() {
               type="button"
               onClick={() => {
                 setEditingId(null)
-                setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true })
+                setLinkForm({ title: '', url: '', icon: 'link', align: 'left', sectionId: '', showLocation: true, showUrl: true, thumbnail: '' })
                 setLinkErrors({})
               }}
               className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
@@ -848,6 +916,7 @@ export default function LinksPage() {
                                   sectionId: l.sectionId || '',
                                   showLocation: parseSmartMetadata(l)?.showLocation ?? true,
                                   showUrl: l.showUrl !== false,
+                                  thumbnail: l.thumbnail || '',
                                 })
                                 window.scrollTo({ top: 0, behavior: 'smooth' })
                               }}
@@ -907,6 +976,7 @@ export default function LinksPage() {
                         sectionId: l.sectionId || '',
                         showLocation: parseSmartMetadata(l)?.showLocation ?? true,
                         showUrl: l.showUrl !== false,
+                        thumbnail: l.thumbnail || '',
                       })
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
