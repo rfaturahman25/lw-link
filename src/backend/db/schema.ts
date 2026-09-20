@@ -42,6 +42,10 @@ export const profiles = sqliteTable('profiles', {
   colorPalette: text('color_palette', {
     enum: ['ocean', 'sunset', 'forest', 'berry', 'midnight', 'candy', 'golden', 'monochrome'],
   }),
+  headerStyle: text('header_style', { enum: ['classic', 'hero', 'banner', 'shape'] })
+    .notNull()
+    .default('classic'),
+  bannerUrl: text('banner_url'),
   logoUrl: text('logo_url'),
   themeConfig: text('theme_config'),
   published: integer('published', { mode: 'boolean' }).default(false),
@@ -83,6 +87,8 @@ export const links = sqliteTable('links', {
   sectionId: text('section_id').references(() => sections.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   url: text('url').notNull(),
+  type: text('type').notNull().default('link'),
+  metadata: text('metadata'),
   icon: text('icon'),
   thumbnail: text('thumbnail'),
   position: integer('position').notNull().default(0),
@@ -99,7 +105,8 @@ export const analyticsEvents = sqliteTable('analytics_events', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   linkId: text('link_id').references(() => links.id, { onDelete: 'set null' }),
-  eventType: text('event_type', { enum: ['profile_view', 'link_click'] }).notNull(),
+  eventType: text('event_type', { enum: ['profile_view', 'link_click', 'social_click'] }).notNull(),
+  socialPlatform: text('social_platform'),
   userAgent: text('user_agent'),
   referrer: text('referrer'),
   ipHash: text('ip_hash'),

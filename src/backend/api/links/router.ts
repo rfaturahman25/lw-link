@@ -7,6 +7,7 @@ import { authMiddleware } from '../../middleware/auth'
 import { requirePermission, PERMISSIONS } from '../../middleware/rbac'
 import type { AuthUser } from '../../middleware/auth'
 import { linkCreateSchema, linkUpdateSchema, reorderSchema } from '../../utils/validation'
+import { resolveSmartLink } from '../../services/location'
 
 type Bindings = { DB: D1Database }
 
@@ -33,11 +34,16 @@ linksRoutes.post('/', zValidator('json', linkCreateSchema), async (c) => {
   const existing = await db.select().from(links).where(eq(links.userId, user.id))
   const maxPos = existing.reduce((m, l) => Math.max(m, l.position), 0)
   const id = crypto.randomUUID()
+  // Resolve smart-link metadata once, at save time (never on public page views).
+  const smart = await resolveSmartLink(body.url)
+  if (smart.metadata && body.showLocation !== undefined) smart.metadata.showLocation = body.showLocation
   await db.insert(links).values({
     id,
     userId: user.id,
     title: body.title,
     url: body.url,
+    type: smart.type,
+    metadata: smart.metadata ? JSON.stringify(smart.metadata) : null,
     icon: body.icon || null,
     thumbnail: body.thumbnail || null,
     enabled: body.enabled ?? true,
@@ -76,8 +82,25 @@ linksRoutes.put('/:id', zValidator('json', linkUpdateSchema), async (c) => {
   const rows = await db.select().from(links).where(and(eq(links.id, id), eq(links.userId, user.id))).limit(1)
   if (rows.length === 0) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Link not found' } }, 404)
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date().toISOString() }
+  delete updates.showLocation // not a column; merged into metadata below
   // ensure sectionId null handling
   if (body.sectionId === null) updates.sectionId = null
+  // Re-resolve smart-link metadata whenever the URL changes.
+  if (body.url) {
+    const smart = await resolveSmartLink(body.url)
+    if (smart.metadata && body.showLocation !== undefined) smart.metadata.showLocation = body.showLocation
+    updates.type = smart.type
+    updates.metadata = smart.metadata ? JSON.stringify(smart.metadata) : null
+  } else if (body.showLocation !== undefined && rows[0].type === 'location' && rows[0].metadata) {
+    // Toggle the map on an existing location link without re-resolving.
+    try {
+      const meta = JSON.parse(rows[0].metadata) as Record<string, unknown>
+      meta.showLocation = body.showLocation
+      updates.metadata = JSON.stringify(meta)
+    } catch {
+      // ignore malformed metadata
+    }
+  }
   await db.update(links).set(updates).where(eq(links.id, id))
   const fresh = await db.select().from(links).where(eq(links.id, id)).limit(1)
   return c.json({ success: true, data: fresh[0] })

@@ -11,6 +11,7 @@ import sectionsRoutes from './api/sections/router'
 import publicRoutes from './api/public/router'
 import analyticsRoutes from './api/analytics/router'
 import adminRoutes from './api/admin/router'
+import uploadRoutes from './api/uploads/router'
 import { errorHandler } from './middleware/error'
 import { requestLogger } from './middleware/logging'
 import { rateLimit } from './middleware/rateLimit'
@@ -18,6 +19,7 @@ import { rateLimit } from './middleware/rateLimit'
 type Bindings = {
   DB: D1Database
   ASSETS?: Fetcher
+  MEDIA?: R2Bucket
   NODE_ENV: string
   SESSION_SECRET: string
   ALLOWED_ORIGINS: string
@@ -78,6 +80,23 @@ app.route('/api/sections', sectionsRoutes)
 app.route('/api/public', publicRoutes)
 app.route('/api/analytics', analyticsRoutes)
 app.route('/api/admin', adminRoutes)
+app.route('/api/uploads', uploadRoutes)
+
+// Public media: serve uploaded logos/banners from R2 (no auth). Only the uploads/ prefix.
+app.get('/media/*', async (c) => {
+  const bucket = (c.env as unknown as { MEDIA?: R2Bucket }).MEDIA
+  const key = c.req.path.replace(/^\/media\//, '')
+  if (!bucket || !key.startsWith('uploads/')) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
+  }
+  const object = await bucket.get(key)
+  if (!object) return c.json({ success: false, error: { code: 'NOT_FOUND' } }, 404)
+  const headers = new Headers()
+  object.writeHttpMetadata(headers)
+  headers.set('etag', object.httpEtag)
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+  return new Response(object.body, { headers })
+})
 
 app.get('/debug/env', (c) => {
   const keys = Object.keys(c.env as Record<string, unknown>)
@@ -87,7 +106,7 @@ app.get('/debug/env', (c) => {
 
 app.get('/', (c) => {
   return c.json({
-    name: 'LW-link API',
+    name: 'Lensa Links API',
     version: '0.1.0',
     status: 'ok',
     endpoints: {

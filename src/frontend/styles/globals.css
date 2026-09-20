@@ -119,4 +119,122 @@
     background-color: hsl(var(--background));
     border-color: hsl(var(--input));
   }
+
+  /* ---- Public profile theme system --------------------------------------
+     Themes are pure configuration: they only set --pp-* CSS variables, and
+     these component classes consume them. The public profile and the admin
+     preview share both the classes and the variables, so they cannot drift. */
+  .pp-root {
+    background-color: var(--pp-bg-color, #f8fafc);
+    background-image: var(--pp-bg-overlay, none), var(--pp-bg-image, none);
+    background-position: var(--pp-bg-position, center);
+    background-size: var(--pp-bg-size, cover);
+    background-repeat: var(--pp-bg-repeat, no-repeat);
+    color: var(--pp-text, #0f172a);
+    font-family: var(--pp-font, system-ui, sans-serif);
+  }
+
+  .pp-card {
+    background-color: var(--pp-card, #ffffff);
+    border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
+    border-radius: var(--pp-card-radius, 1rem);
+    box-shadow: var(--pp-shadow, none);
+    -webkit-backdrop-filter: blur(var(--pp-card-blur, 0px));
+    backdrop-filter: blur(var(--pp-card-blur, 0px));
+  }
+
+  /* Link cards follow the theme's button shape/style (square/pill/outlined/elevated). */
+  .pp-link {
+    background-color: var(--pp-link-bg, var(--pp-card, #ffffff));
+    border-width: var(--pp-link-border-width, 1px);
+    border-style: solid;
+    border-color: var(--pp-link-border, var(--pp-border, rgba(15, 23, 42, 0.08)));
+    border-radius: var(--pp-link-radius, 1rem);
+    box-shadow: var(--pp-link-shadow, var(--pp-shadow, none));
+  }
+
+  /* Quiet secondary action (share/copy) that still follows the theme surface. */
+  .pp-ghost {
+    background-color: var(--pp-card, #ffffff);
+    color: var(--pp-text, #0f172a);
+    border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
+    border-radius: var(--pp-btn-radius, 0.75rem);
+  }
+
+  .pp-social {
+    background-color: var(--pp-card, #ffffff);
+    color: var(--pp-social, #475569);
+    border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
+    box-shadow: var(--pp-shadow, none);
+  }
+
+  /* Icon-only social style: no surface, no border, no shadow. */
+  .pp-social-plain {
+    background-color: transparent;
+    color: var(--pp-social, #475569);
+    border: 0;
+  }
+
+  .pp-btn {
+    background-color: var(--pp-btn-bg, #2563eb);
+    color: var(--pp-btn-text, #ffffff);
+    border-width: var(--pp-btn-border-width, 0px);
+    border-style: solid;
+    border-color: var(--pp-btn-border, transparent);
+    border-radius: var(--pp-btn-radius, 0.75rem);
+    box-shadow: var(--pp-btn-shadow, none);
+  }
+
+  .pp-interactive {
+    touch-action: manipulation;
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out,
+      border-color 200ms ease-out,
+      background-color 200ms ease-out,
+      color 200ms ease-out;
+  }
+
+  /* Hover effects only where a real pointer exists, so they never stick on touch. */
+  @media (hover: hover) {
+    .pp-interactive:hover {
+      transform: translateY(var(--pp-hover-lift, 0px)) scale(var(--pp-hover-scale, 1));
+      box-shadow: var(--pp-hover-shadow, var(--pp-shadow, none));
+      border-color: var(--pp-hover-border, var(--pp-border));
+    }
+
+    .pp-social:hover {
+      color: var(--pp-accent, #2563eb);
+    }
+
+    .pp-ghost:hover {
+      color: var(--pp-accent, #2563eb);
+    }
+
+    .pp-social-plain.pp-interactive:hover {
+      color: var(--pp-accent, #2563eb);
+      box-shadow: none;
+      transform: translateY(-2px) scale(1.08);
+    }
+  }
+
+  .pp-interactive:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .pp-interactive:focus-visible {
+    outline: 2px solid var(--pp-accent, #2563eb);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pp-interactive {
+      transition: none;
+    }
+
+    .pp-interactive:hover,
+    .pp-interactive:active {
+      transform: none;
+    }
+  }
 }

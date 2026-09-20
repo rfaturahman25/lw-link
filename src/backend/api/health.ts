@@ -12,7 +12,7 @@ healthRoutes.get('/', (c) => {
   return c.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: c.env.APP_NAME || 'LW-link',
+    service: c.env.APP_NAME || 'Lensa Links',
     environment: c.env.NODE_ENV || 'development',
     version: '0.1.0',
   })
@@ -55,9 +55,9 @@ healthRoutes.get('/ready', async (c) => {
 
 healthRoutes.get('/version', (c) => {
   return c.json({
-    name: 'LW-link',
+    name: 'Lensa Links',
     version: '0.1.0',
-    description: 'Internal Linktree-like application',
+    description: 'Lensa Links — link sharing platform',
     environment: c.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   })

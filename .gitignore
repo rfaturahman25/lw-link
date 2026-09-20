@@ -1,4 +1,3 @@
-```
 # Dependencies
 node_modules/
 vendor/
@@ -39,10 +38,18 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 
-# Environment variables
+# Environment variables / secrets (never commit)
 .env
 .env.local
 .env.*
+.dev.vars
+.dev.vars.*
+
+# Cloudflare local state
+.wrangler/
+
+# Local session notes
+session-*.md
 
 # IDE files
 .vscode/
@@ -59,5 +66,3 @@ htmlcov/
 # Temporary files
 *.tmp
 *.temp
-.DS_Store
-```

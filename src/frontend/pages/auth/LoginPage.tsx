@@ -33,7 +33,7 @@ const LoginPage = () => {
           <LogIn className="h-6 w-6" />
         </div>
         <h1 className="text-3xl font-bold">Sign In</h1>
-        <p className="text-muted-foreground">LW-link — internal</p>
+        <p className="text-muted-foreground">Lensa Links — internal</p>
       </div>
 
       <div className="card p-6 space-y-4">
@@ -55,7 +55,7 @@ const LoginPage = () => {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="username atau email"
+                placeholder="username or email"
                 className="input pl-10"
                 required
               />

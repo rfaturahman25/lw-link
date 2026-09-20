@@ -1,5 +1,6 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardContext } from './DashboardLayout'
+import { SOCIAL_META, socialIcon } from '../../components/profile/socialMeta'
 import {
   Eye,
   MousePointerClick,
@@ -19,8 +20,14 @@ export default function AnalyticsPage() {
   const { user } = useAuth()
   const { analytics } = useDashboardContext()
   const totalClicks = analytics?.totalClicks ?? 0
+  const totalSocialClicks = analytics?.totalSocialClicks ?? 0
   const totalViews = analytics?.totalViews ?? 0
   const uniqueVisitors = analytics?.uniqueVisitors ?? 0
+  const topSocials = (analytics?.topSocials ?? []) as Array<{
+    platform: string | null
+    clicks: number
+  }>
+  const maxSocialClicks = Math.max(1, ...topSocials.map((s) => s.clicks))
   const topLinks = (analytics?.topLinks ?? []) as Array<{
     linkId: string | null
     clicks: number
@@ -49,7 +56,7 @@ export default function AnalyticsPage() {
     '#996748',
     '#4F6D7A',
   ]
-  const hasData = totalClicks > 0 || totalViews > 0
+  const hasData = totalClicks > 0 || totalViews > 0 || totalSocialClicks > 0
   const chartW = 600
   const chartH = 140
   const padL = 28,
@@ -167,7 +174,7 @@ export default function AnalyticsPage() {
           )}
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="card p-3 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">CTR</p>
@@ -176,6 +183,10 @@ export default function AnalyticsPage() {
             </p>
           </div>
           <span className="text-xs text-muted-foreground hidden sm:inline">clicks / views</span>
+        </div>
+        <div className="card p-3">
+          <p className="text-xs text-muted-foreground">Social / Contact clicks</p>
+          <p className="text-lg font-bold">{totalSocialClicks.toLocaleString()}</p>
         </div>
         <div className="card p-3">
           <p className="text-xs text-muted-foreground">Avg clicks / day</p>
@@ -334,6 +345,50 @@ export default function AnalyticsPage() {
           <p className="text-sm text-muted-foreground py-4 text-center">No data for bar chart</p>
         )}
       </div>
+      <div className="card space-y-3 rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> Top Social / Contact
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            {totalSocialClicks.toLocaleString()} clicks
+          </span>
+        </div>
+        {topSocials.length ? (
+          <div className="space-y-2">
+            {topSocials.map((s, i) => {
+              const meta = s.platform
+                ? SOCIAL_META[s.platform as keyof typeof SOCIAL_META]
+                : undefined
+              const label = meta?.label ?? s.platform ?? 'Unknown'
+              return (
+                <div key={s.platform ?? i} className="flex items-center gap-3">
+                  <span className="flex w-28 shrink-0 items-center justify-end gap-2 text-xs font-medium sm:w-40">
+                    {s.platform && socialIcon(s.platform, 'h-4 w-4')}
+                    <span className="truncate">{label}</span>
+                  </span>
+                  <div className="relative h-7 flex-1 overflow-hidden rounded-md bg-muted">
+                    <div
+                      className="flex h-full items-center justify-end rounded-md pr-2 text-xs font-bold text-white transition-all"
+                      style={{
+                        width: `${Math.max(8, (s.clicks / maxSocialClicks) * 100)}%`,
+                        background: donutColors[i % donutColors.length],
+                      }}
+                    >
+                      {s.clicks}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No social/contact clicks yet.
+          </p>
+        )}
+      </div>
+
       <div className="card space-y-3 rounded-2xl p-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold flex items-center gap-2">

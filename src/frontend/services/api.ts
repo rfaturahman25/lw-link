@@ -18,6 +18,11 @@ export const api = {
   session: () => request('/api/auth/session'),
   me: () => request('/api/me'),
   meUpdate: (data: { username?: string; displayName?: string; avatarUrl?: string | null }) => request('/api/me', { method: 'PUT', body: JSON.stringify(data) }),
+  uploadImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request<{ url: string }>('/api/uploads', { method: 'POST', body: fd })
+  },
   profileGet: () => request('/api/profile'),
   profilePut: (data: unknown) => request('/api/profile', { method: 'PUT', body: JSON.stringify(data) }),
   profilePublish: (published: boolean) => request('/api/profile/publish', { method: 'PUT', body: JSON.stringify({ published }) }),
@@ -32,6 +37,7 @@ export const api = {
   publicProfile: (username: string) => request(`/api/public/${username}`),
   trackView: (username: string) => request(`/api/public/${username}/view`, { method: 'POST' }),
   trackClick: (username: string, linkId: string) => request(`/api/public/${username}/click`, { method: 'POST', body: JSON.stringify({ linkId }) }),
+  trackSocialClick: (username: string, platform: string) => request(`/api/public/${username}/social-click`, { method: 'POST', body: JSON.stringify({ platform }) }),
   analytics: () => request('/api/analytics'),
   adminUsers: (q?: string, role?: string, status?: string) => {
     const p = new URLSearchParams()

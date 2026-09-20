@@ -49,6 +49,8 @@ profileRoutes.put('/', zValidator('json', profileUpdateSchema), async (c) => {
       if (body.textAlignment !== undefined) updateData.textAlignment = body.textAlignment
       if (body.avatarShape !== undefined) updateData.avatarShape = body.avatarShape
       if (body.colorPalette !== undefined) updateData.colorPalette = body.colorPalette
+      if (body.headerStyle !== undefined) updateData.headerStyle = body.headerStyle
+      if (body.bannerUrl !== undefined) updateData.bannerUrl = body.bannerUrl
       if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl
       if (body.themeConfig !== undefined) updateData.themeConfig = body.themeConfig ? JSON.stringify(body.themeConfig) : null
       await db.update(profiles).set(updateData).where(eq(profiles.userId, user.id))

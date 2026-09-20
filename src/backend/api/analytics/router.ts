@@ -17,6 +17,7 @@ analyticsRoutes.get('/', async (c) => {
 
   const totalViews = await db.select({ cnt: sql<number>`count(*)` }).from(analyticsEvents).where(and(eq(analyticsEvents.userId, user.id), eq(analyticsEvents.eventType, 'profile_view')))
   const totalClicks = await db.select({ cnt: sql<number>`count(*)` }).from(analyticsEvents).where(and(eq(analyticsEvents.userId, user.id), eq(analyticsEvents.eventType, 'link_click')))
+  const totalSocialClicks = await db.select({ cnt: sql<number>`count(*)` }).from(analyticsEvents).where(and(eq(analyticsEvents.userId, user.id), eq(analyticsEvents.eventType, 'social_click')))
 
   const uniqueVisitors = await db
     .select({ cnt: sql<number>`count(distinct ip_hash)` })
@@ -35,6 +36,17 @@ analyticsRoutes.get('/', async (c) => {
     .leftJoin(links, eq(links.id, analyticsEvents.linkId))
     .where(and(eq(analyticsEvents.userId, user.id), eq(analyticsEvents.eventType, 'link_click')))
     .groupBy(analyticsEvents.linkId)
+    .orderBy(desc(sql`count(*)`))
+    .limit(10)
+
+  const topSocials = await db
+    .select({
+      platform: analyticsEvents.socialPlatform,
+      clicks: sql<number>`count(*)`,
+    })
+    .from(analyticsEvents)
+    .where(and(eq(analyticsEvents.userId, user.id), eq(analyticsEvents.eventType, 'social_click')))
+    .groupBy(analyticsEvents.socialPlatform)
     .orderBy(desc(sql`count(*)`))
     .limit(10)
 
@@ -65,8 +77,10 @@ analyticsRoutes.get('/', async (c) => {
     data: {
       totalViews: totalViews[0]?.cnt ?? 0,
       totalClicks: totalClicks[0]?.cnt ?? 0,
+      totalSocialClicks: totalSocialClicks[0]?.cnt ?? 0,
       uniqueVisitors: uniqueVisitors[0]?.cnt ?? 0,
       topLinks,
+      topSocials,
       daily,
     },
   })

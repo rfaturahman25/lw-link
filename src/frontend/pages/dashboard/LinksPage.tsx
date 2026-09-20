@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useDashboardContext } from './DashboardLayout'
 import { api } from '../../services/api'
+import { useAuth } from '../../hooks/useAuth'
+import ProfilePreview from '../../components/profile/ProfilePreview'
+import { resolveProfileTheme, resolveShowShare, resolveSocialStyle } from '../../themes'
+import { WhatsAppIcon } from '../../components/icons/BrandIcons'
+import { isMapsUrl, parseSmartMetadata } from '../../components/profile/smartLink'
 import {
   DndContext,
   closestCenter,
@@ -29,7 +34,6 @@ import {
   Youtube,
   Facebook,
   Link as LinkIcon,
-  MessageCircle,
   FileSpreadsheet,
   FileText,
   ShoppingBag,
@@ -42,12 +46,13 @@ import {
   Trash2,
   MoreVertical,
   Folder,
+  MapPin,
 } from 'lucide-react'
 
 const ICON_OPTIONS = [
   { value: 'link', label: 'Link', icon: LinkIcon },
   { value: 'instagram', label: 'Instagram', icon: Instagram },
-  { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { value: 'whatsapp', label: 'WhatsApp', icon: WhatsAppIcon },
   { value: 'sheet', label: 'Google Sheet', icon: FileSpreadsheet },
   { value: 'globe', label: 'Website', icon: Globe },
   { value: 'youtube', label: 'YouTube', icon: Youtube },
@@ -73,7 +78,7 @@ const iconMap: Record<string, React.ReactNode> = {
   instagram: <Instagram className="h-5 w-5" />,
   youtube: <Youtube className="h-5 w-5" />,
   facebook: <Facebook className="h-5 w-5" />,
-  whatsapp: <MessageCircle className="h-5 w-5" />,
+  whatsapp: <WhatsAppIcon className="h-5 w-5" />,
   sheet: <FileSpreadsheet className="h-5 w-5" />,
   link: <LinkIcon className="h-5 w-5" />,
   file: <FileText className="h-5 w-5" />,
@@ -97,6 +102,8 @@ function SortableLinkItem({
     title: string
     url: string
     icon: string | null
+    type?: string | null
+    metadata?: string | null
     enabled: boolean
     sectionId: string | null
   }
@@ -107,6 +114,10 @@ function SortableLinkItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: link.id,
   })
+  const locMeta = link.type === 'location' ? parseSmartMetadata(link) : null
+  const subtitle = locMeta
+    ? [locMeta.placeName, locMeta.address].filter(Boolean).join(' · ') || link.url
+    : link.url
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -121,7 +132,7 @@ function SortableLinkItem({
       <button
         {...attributes}
         {...listeners}
-        className="shrink-0 rounded p-1.5 hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+        className="inline-flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing cursor-grab"
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4" />
@@ -130,24 +141,37 @@ function SortableLinkItem({
         {iconMap[link.icon || 'link'] || iconMap.default}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate text-sm">
-          {link.title} {link.enabled ? '' : '(disabled)'}
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          {link.type === 'location' && (
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+          )}
+          <span className="truncate">
+            {link.title} {link.enabled ? '' : '(disabled)'}
+          </span>
+          {link.type === 'location' && (
+            <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+              {locMeta?.showLocation === false ? 'LOCATION HIDDEN' : 'LOCATION'}
+            </span>
+          )}
         </p>
-        <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={onEdit} className="rounded border px-2 py-1 text-xs hover:bg-accent">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          onClick={onEdit}
+          className="rounded border px-2.5 py-1.5 text-xs hover:bg-accent"
+        >
           Edit
         </button>
         <button
           onClick={onToggle}
-          className={`rounded px-2 py-1 text-xs font-medium ${link.enabled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+          className={`rounded px-2.5 py-1.5 text-xs font-medium ${link.enabled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
         >
           {link.enabled ? 'ON' : 'OFF'}
         </button>
         <button
           onClick={onDelete}
-          className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+          className="rounded bg-red-50 px-2.5 py-1.5 text-xs text-red-700 hover:bg-red-100"
         >
           Delete
         </button>
@@ -193,7 +217,8 @@ function SortableSection({
         <button
           {...attributes}
           {...listeners}
-          className="shrink-0 rounded p-1 hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing"
+          className="inline-flex h-9 w-9 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing"
+          aria-label="Drag to reorder section"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -214,14 +239,16 @@ function SortableSection({
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="rounded p-1 hover:bg-accent text-muted-foreground"
+              aria-label="Rename section"
+              className="inline-flex h-9 w-9 items-center justify-center rounded text-muted-foreground hover:bg-accent"
             >
               <Edit2 className="h-4 w-4" />
             </button>
           )}
           <button
             onClick={() => onDelete(section.id)}
-            className="rounded p-1 hover:bg-accent text-muted-foreground"
+            aria-label="Delete section"
+            className="inline-flex h-9 w-9 items-center justify-center rounded text-muted-foreground hover:bg-accent"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -233,29 +260,99 @@ function SortableSection({
 }
 
 export default function LinksPage() {
-  const { links, sections, reload, setLinks } = useDashboardContext() as unknown as {
-    links: Array<{
-      id: string
-      title: string
-      url: string
-      icon: string | null
-      enabled: boolean
-      sectionId: string | null
-      position: number
-    }>
-    sections: Array<{ id: string; title: string; position: number }>
-    reload: () => Promise<void>
-    setLinks: React.Dispatch<React.SetStateAction<any[]>>
-  }
+  const { links, sections, socials, profile, reload, setLinks } =
+    useDashboardContext() as unknown as {
+      links: Array<{
+        id: string
+        title: string
+        url: string
+        icon: string | null
+        type?: string | null
+        metadata?: string | null
+        enabled: boolean
+        sectionId: string | null
+        position: number
+      }>
+      sections: Array<{ id: string; title: string; position: number }>
+      socials: Array<{ platform: string; value: string; enabled: boolean; position: number }>
+      profile: {
+        bio?: string | null
+        logoUrl?: string | null
+        themeConfig?: unknown
+        colorPalette?: string | null
+        buttonStyle?: string | null
+        fontFamily?: string | null
+        headerStyle?: string | null
+        bannerUrl?: string | null
+        user?: { displayName: string; avatarUrl: string | null }
+      } | null
+      reload: () => Promise<void>
+      setLinks: React.Dispatch<React.SetStateAction<any[]>>
+    }
+  const { user } = useAuth()
+  const previewTheme = useMemo(() => resolveProfileTheme(profile), [profile])
+  const previewUrl = user ? `${window.location.origin}/@${user.username}` : ''
+  // Memoised so typing/selecting in the form does not re-render the whole preview
+  // (and its QR/map iframes), which was making the editor feel laggy.
+  const previewElement = useMemo(
+    () => (
+      <ProfilePreview
+        theme={previewTheme}
+        displayName={profile?.user?.displayName || user?.displayName || ''}
+        avatarUrl={profile?.user?.avatarUrl ?? user?.avatarUrl ?? null}
+        bio={profile?.bio ?? null}
+        logoUrl={profile?.logoUrl ?? null}
+        links={links.filter((l) => l.enabled)}
+        sections={sections}
+        socials={socials
+          .filter((s) => s.enabled)
+          .map((s) => ({ platform: s.platform, value: s.value }))}
+        profileUrl={previewUrl}
+        showShare={resolveShowShare(profile)}
+        socialStyle={resolveSocialStyle(profile)}
+        headerStyle={(profile?.headerStyle as 'classic' | 'hero' | 'banner' | 'shape') ?? 'classic'}
+        bannerUrl={profile?.bannerUrl ?? null}
+      />
+    ),
+    [previewTheme, profile, user, links, sections, socials, previewUrl]
+  )
+
   const [linkForm, setLinkForm] = useState({
     title: '',
     url: '',
     icon: 'link',
     sectionId: '' as string,
+    showLocation: true,
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [showAddSection, setShowAddSection] = useState(false)
+  const [sectionError, setSectionError] = useState('')
+  const [linkErrors, setLinkErrors] = useState<{ title?: string; url?: string }>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  // Memoised so unrelated form edits don't re-render all icon buttons (perceived lag).
+  const iconButtons = useMemo(
+    () =>
+      ICON_OPTIONS.map((opt) => {
+        const Icon = opt.icon
+        const selected = linkForm.icon === opt.value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setLinkForm((f) => ({ ...f, icon: opt.value }))}
+            aria-pressed={selected}
+            title={opt.label}
+            className={`flex min-h-[44px] flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors hover:bg-accent ${selected ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background'}`}
+          >
+            <Icon className="h-5 w-5" />
+            <span className="truncate w-full text-center text-[10px] leading-none">{opt.label}</span>
+          </button>
+        )
+      }),
+    [linkForm.icon]
+  )
 
   const sectionSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -272,11 +369,20 @@ export default function LinksPage() {
 
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newSectionTitle.trim()) return
-    await api.sectionCreate(newSectionTitle.trim())
-    setNewSectionTitle('')
-    setShowAddSection(false)
-    await reload()
+    const title = newSectionTitle.trim()
+    if (!title) {
+      setSectionError('Section name is required.')
+      return
+    }
+    try {
+      await api.sectionCreate(title)
+      setNewSectionTitle('')
+      setSectionError('')
+      setShowAddSection(false)
+      await reload()
+    } catch (err: unknown) {
+      setSectionError(err instanceof Error ? err.message : 'Failed to create section.')
+    }
   }
 
   const handleEditSection = async (id: string, title: string) => {
@@ -309,22 +415,43 @@ export default function LinksPage() {
     await reload()
   }
 
+  const validateLink = () => {
+    const errs: { title?: string; url?: string } = {}
+    if (!linkForm.title.trim()) errs.title = 'Title is required.'
+    const url = linkForm.url.trim()
+    if (!url) errs.url = 'URL is required.'
+    else if (!/^https?:\/\/.+/i.test(url))
+      errs.url = 'URL must start with http:// or https:// (example: https://example.com).'
+    setLinkErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
   const addLink = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validateLink()) return
+    setSubmitting(true)
     const payload: Record<string, unknown> = {
-      title: linkForm.title,
-      url: linkForm.url,
+      title: linkForm.title.trim(),
+      url: linkForm.url.trim(),
       icon: linkForm.icon || null,
       sectionId: linkForm.sectionId || null,
     }
-    if (editingId) {
-      await api.linkUpdate(editingId, payload)
-      setEditingId(null)
-    } else {
-      await api.linkCreate(payload)
+    if (isMapsUrl(linkForm.url)) payload.showLocation = linkForm.showLocation
+    try {
+      if (editingId) {
+        await api.linkUpdate(editingId, payload)
+        setEditingId(null)
+      } else {
+        await api.linkCreate(payload)
+      }
+      setLinkForm({ title: '', url: '', icon: 'link', sectionId: '', showLocation: true })
+      setLinkErrors({})
+      await reload()
+    } catch (err: unknown) {
+      setLinkErrors({ url: err instanceof Error ? err.message : 'Failed to save link.' })
+    } finally {
+      setSubmitting(false)
     }
-    setLinkForm({ title: '', url: '', icon: 'link', sectionId: '' })
-    await reload()
   }
 
   const toggleLink = async (id: string) => {
@@ -409,29 +536,40 @@ export default function LinksPage() {
         </button>
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
       {showAddSection && (
-        <form onSubmit={handleAddSection} className="card flex gap-2 rounded-2xl p-4">
-          <input
-            value={newSectionTitle}
-            onChange={(e) => setNewSectionTitle(e.target.value)}
-            placeholder="Section title (e.g. Social Media)"
-            className="input flex-1"
-            required
-            autoFocus
-          />
-          <button
-            type="submit"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Create
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAddSection(false)}
-            className="rounded-md border px-4 py-2 text-sm"
-          >
-            Cancel
-          </button>
+        <form onSubmit={handleAddSection} className="card space-y-2 rounded-2xl p-4">
+          <div className="flex gap-2">
+            <input
+              value={newSectionTitle}
+              onChange={(e) => {
+                setNewSectionTitle(e.target.value)
+                if (sectionError) setSectionError('')
+              }}
+              placeholder="Section title (e.g. Social Media)"
+              className={`input flex-1 ${sectionError ? 'border-red-400' : ''}`}
+              aria-invalid={!!sectionError}
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddSection(false)
+                setSectionError('')
+              }}
+              className="rounded-md border px-4 py-2 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+          {sectionError && <p className="text-xs text-red-600">{sectionError}</p>}
         </form>
       )}
 
@@ -440,7 +578,7 @@ export default function LinksPage() {
           <Folder className="h-10 w-10 mx-auto text-muted-foreground" />
           <h3 className="font-semibold">Organize your links into sections</h3>
           <p className="text-sm text-muted-foreground">
-            Create sections to make your Linktree easier to navigate.
+            Create sections to make your profile easier to navigate.
           </p>
           <button
             onClick={() => setShowAddSection(true)}
@@ -453,20 +591,55 @@ export default function LinksPage() {
 
       <form onSubmit={addLink} className="card space-y-4 rounded-2xl p-5 sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            value={linkForm.title}
-            onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })}
-            placeholder="Title (e.g. WhatsApp)"
-            className="input"
-            required
-          />
-          <input
-            value={linkForm.url}
-            onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
-            placeholder="https://..."
-            className="input"
-            required
-          />
+          <div>
+            <input
+              value={linkForm.title}
+              onChange={(e) => {
+                setLinkForm({ ...linkForm, title: e.target.value })
+                if (linkErrors.title) setLinkErrors((p) => ({ ...p, title: '' }))
+              }}
+              placeholder="Title (e.g. WhatsApp)"
+              className={`input ${linkErrors.title ? 'border-red-400' : ''}`}
+              aria-invalid={!!linkErrors.title}
+            />
+            {linkErrors.title && <p className="mt-1 text-xs text-red-600">{linkErrors.title}</p>}
+          </div>
+          <div>
+            <input
+              value={linkForm.url}
+              onChange={(e) => {
+                setLinkForm({ ...linkForm, url: e.target.value })
+                if (linkErrors.url) setLinkErrors((p) => ({ ...p, url: '' }))
+              }}
+              placeholder="https://..."
+              className={`input ${linkErrors.url ? 'border-red-400' : ''}`}
+              aria-invalid={!!linkErrors.url}
+            />
+            {linkErrors.url && <p className="mt-1 text-xs text-red-600">{linkErrors.url}</p>}
+            {isMapsUrl(linkForm.url) ? (
+              <div className="mt-2 space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+                <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" /> Google Maps location detected — this
+                  will be a Location Smart Link.
+                </p>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={linkForm.showLocation}
+                    onChange={(e) => setLinkForm({ ...linkForm, showLocation: e.target.checked })}
+                  />
+                  Show location info on the public profile
+                </label>
+                <p className="text-[11px] text-muted-foreground">
+                  Name &amp; address are extracted from the URL when you save.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Tip: paste a Google Maps URL to create a Location Smart Link.
+              </p>
+            )}
+          </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Section</label>
@@ -486,24 +659,7 @@ export default function LinksPage() {
         <div className="space-y-2">
           <label className="text-sm font-medium">Icon</label>
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2">
-            {ICON_OPTIONS.map((opt) => {
-              const Icon = opt.icon
-              const selected = linkForm.icon === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setLinkForm({ ...linkForm, icon: opt.value })}
-                  className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs hover:bg-accent ${selected ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background'}`}
-                  title={opt.label}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="truncate w-full text-center text-[10px] leading-none">
-                    {opt.label}
-                  </span>
-                </button>
-              )
-            })}
+            {iconButtons}
           </div>
           <p className="text-xs text-muted-foreground">
             Choose the icon that appears next to your link (WhatsApp, Instagram, Google Sheet,
@@ -513,16 +669,18 @@ export default function LinksPage() {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow"
+            disabled={submitting}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow disabled:opacity-50"
           >
-            {editingId ? 'Update link' : '+ Add link'}
+            {submitting ? 'Saving...' : editingId ? 'Update link' : '+ Add link'}
           </button>
           {editingId && (
             <button
               type="button"
               onClick={() => {
                 setEditingId(null)
-                setLinkForm({ title: '', url: '', icon: 'link', sectionId: '' })
+                setLinkForm({ title: '', url: '', icon: 'link', sectionId: '', showLocation: true })
+                setLinkErrors({})
               }}
               className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
             >
@@ -586,6 +744,7 @@ export default function LinksPage() {
                                     url: l.url,
                                     icon: l.icon || 'link',
                                     sectionId: l.sectionId || '',
+                                    showLocation: parseSmartMetadata(l)?.showLocation ?? true,
                                   })
                                   window.scrollTo({ top: 0, behavior: 'smooth' })
                                 }}
@@ -651,6 +810,7 @@ export default function LinksPage() {
                         url: l.url,
                         icon: l.icon || 'link',
                         sectionId: l.sectionId || '',
+                        showLocation: parseSmartMetadata(l)?.showLocation ?? true,
                       })
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
@@ -662,6 +822,15 @@ export default function LinksPage() {
             </SortableContext>
           </DndContext>
         )}
+      </div>
+        </div>
+
+        <aside className="w-full min-w-0 lg:sticky lg:top-6 lg:self-start">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Live preview
+          </p>
+          {previewElement}
+        </aside>
       </div>
     </div>
   )

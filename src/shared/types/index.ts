@@ -8,16 +8,25 @@ export type EventType = 'profile_view' | 'link_click'
 export type ColorPalette =
   'ocean' | 'sunset' | 'forest' | 'berry' | 'midnight' | 'candy' | 'golden' | 'monochrome'
 export type ProfileFont = 'inter' | 'dm-sans' | 'poppins' | 'manrope' | 'plus-jakarta-sans' | 'space-grotesk' | 'playfair-display'
-export type SocialPlatform = 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'twitter' | 'facebook' | 'linkedin' | 'github' | 'email' | 'phone' | 'website'
+export type SocialPlatform = 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'twitter' | 'facebook' | 'linkedin' | 'github' | 'website' | 'email' | 'phone' | 'whatsapp'
+
+export type ThemeButtonShape = 'square' | 'rounded' | 'pill' | 'outlined' | 'elevated'
+
+export interface ThemeOverrides {
+  buttonColor?: string
+  buttonTextColor?: string
+  accentColor?: string
+  textColor?: string
+  textSecondaryColor?: string
+  cardColor?: string
+  socialIconColor?: string
+  fontFamily?: ProfileFont
+  buttonShape?: ThemeButtonShape
+}
 
 export interface ThemeConfig {
-  background: string
-  surface: string
-  button: string
-  buttonText: string
-  text: string
-  secondaryText: string
-  accent: string
+  themeId: string
+  overrides?: ThemeOverrides | null
 }
 
 export interface User {
@@ -44,6 +53,8 @@ export interface Profile {
   textAlignment: TextAlignment
   avatarShape: AvatarShape
   colorPalette?: ColorPalette | null
+  headerStyle?: 'classic' | 'hero' | 'banner' | 'shape'
+  bannerUrl?: string | null
   logoUrl?: string | null
   themeConfig?: ThemeConfig | null
   published: boolean

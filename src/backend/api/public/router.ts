@@ -3,6 +3,7 @@ import { eq, and, desc, sql, count } from 'drizzle-orm'
 import { createDb } from '../../db/client'
 import { users, profiles, links, sections, analyticsEvents, profileSocialLinks } from '../../db/schema'
 import { hashIP } from '../../utils/security'
+import { socialPlatformSchema } from '../../utils/validation'
 
 type Bindings = { DB: D1Database }
 
@@ -86,6 +87,34 @@ publicRoutes.post('/:username/click', async (c) => {
     userId: user.id,
     linkId,
     eventType: 'link_click',
+    userAgent: c.req.header('user-agent')?.slice(0, 500) || null,
+    referrer: c.req.header('referer')?.slice(0, 500) || null,
+    ipHash,
+    countryCode: (c.req.header('cf-ipcountry') || null) as string | null,
+  })
+  return c.json({ success: true })
+})
+
+publicRoutes.post('/:username/social-click', async (c) => {
+  let username = c.req.param('username')
+  try { username = decodeURIComponent(username) } catch (_e) { /* ignore */ }
+  username = username.replace(/^@/, '').toLowerCase()
+  const body = (await c.req.json().catch(() => ({}))) as { platform?: string }
+  const parsed = socialPlatformSchema.safeParse(body.platform)
+  if (!parsed.success) return c.json({ success: false, error: { code: 'INVALID_PLATFORM' } }, 400)
+  const db = createDb(c.env.DB)
+  const uRows = await db.select().from(users).where(eq(users.username, username)).limit(1)
+  if (uRows.length === 0) return c.json({ success: false }, 404)
+  const user = uRows[0]
+  const pRows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+  if (!pRows[0]?.published) return c.json({ success: false }, 404)
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+  const ipHash = await hashIP(ip)
+  await db.insert(analyticsEvents).values({
+    userId: user.id,
+    linkId: null,
+    eventType: 'social_click',
+    socialPlatform: parsed.data,
     userAgent: c.req.header('user-agent')?.slice(0, 500) || null,
     referrer: c.req.header('referer')?.slice(0, 500) || null,
     ipHash,

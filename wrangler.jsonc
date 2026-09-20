@@ -19,7 +19,7 @@
   },
   
   "vars": {
-    "APP_NAME": "LW-link",
+    "APP_NAME": "Lensa Links",
     "NODE_ENV": "production",
     "SESSION_SECRET": "@session_secret",
     "ALLOWED_ORIGINS": "https://links.lensawaktu.id"
@@ -31,6 +31,13 @@
       "database_name": "lw-link-db",
       "database_id": "14fb9c06-9e4f-4501-8a48-8457e9d46851",
       "migrations_dir": "migrations"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "lensa-waktu"
     }
   ],
   

@@ -2,33 +2,49 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardContext } from './DashboardLayout'
 import { api } from '../../services/api'
-import { AlertTriangle, Upload, Palette } from 'lucide-react'
+import { AlertTriangle, Upload } from 'lucide-react'
+import ThemePicker from '../../components/profile/ThemePicker'
+import ProfilePreview from '../../components/profile/ProfilePreview'
+import SocialsEditor from '../../components/profile/SocialsEditor'
+import { newSocialDraft, validateSocialValue } from '../../components/profile/socialMeta'
+import type { SocialDraft } from '../../components/profile/socialMeta'
+import { resolveDraftConfig, toDraftConfig } from '../../themes'
+import type { StoredThemeConfig } from '../../themes'
 
-const COLOR_PALETTES: { value: string; label: string; colors: string[] }[] = [
-  { value: 'ocean', label: 'Ocean', colors: ['#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'] },
-  { value: 'sunset', label: 'Sunset', colors: ['#ff6b35', '#f7c59f', '#efefd0', '#004e64'] },
-  { value: 'forest', label: 'Forest', colors: ['#2d6a4f', '#40916c', '#74c69d', '#d8f3dc'] },
-  { value: 'berry', label: 'Berry', colors: ['#9d0208', '#d00000', '#dc2f02', '#e85d04'] },
-  { value: 'midnight', label: 'Midnight', colors: ['#03045e', '#0077b6', '#00b4d8', '#90e0ef'] },
-  { value: 'candy', label: 'Candy', colors: ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec'] },
-  { value: 'golden', label: 'Golden', colors: ['#d4af37', '#f4e5c2', '#fefae0', '#dda15e'] },
-  {
-    value: 'monochrome',
-    label: 'Monochrome',
-    colors: ['#000000', '#333333', '#666666', '#cccccc'],
-  },
+type HeaderStyle = 'classic' | 'hero' | 'banner' | 'shape'
+
+const HEADER_STYLES: { value: HeaderStyle; label: string; desc: string }[] = [
+  { value: 'classic', label: 'Classic', desc: 'Logo + round avatar' },
+  { value: 'hero', label: 'Hero', desc: 'Banner behind avatar' },
+  { value: 'banner', label: 'Banner', desc: 'Banner above avatar' },
+  { value: 'shape', label: 'Shape', desc: 'Avatar in a shape' },
 ]
 
 export default function ProfilePage() {
   const { user } = useAuth()
-  const { profile, reload } = useDashboardContext()
-  const [form, setForm] = useState({
+  const { profile, links, sections, socials, reload } = useDashboardContext()
+  const [form, setForm] = useState<{
+    displayName: string
+    bio: string
+    theme: string
+    published: boolean
+    colorPalette: string | null
+    logoUrl: string | null
+    headerStyle: 'classic' | 'hero' | 'banner' | 'shape'
+    bannerUrl: string | null
+    themeConfig: StoredThemeConfig
+    socials: SocialDraft[]
+  }>({
     displayName: '',
     bio: '',
     theme: 'default',
     published: false,
-    colorPalette: '' as string | null,
-    logoUrl: '' as string | null,
+    colorPalette: null,
+    logoUrl: null,
+    headerStyle: 'classic',
+    bannerUrl: null,
+    themeConfig: { themeId: 'minimal', overrides: {} },
+    socials: [],
   })
   const [username, setUsername] = useState('')
   const [usernameMsg, setUsernameMsg] = useState<{
@@ -39,6 +55,10 @@ export default function ProfilePage() {
   const [logoInput, setLogoInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [socialErrors, setSocialErrors] = useState<Record<string, string>>({})
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   useEffect(() => {
     if (profile) {
@@ -46,24 +66,58 @@ export default function ProfilePage() {
         user?: { displayName: string }
         colorPalette?: string | null
         logoUrl?: string | null
+        headerStyle?: string | null
+        bannerUrl?: string | null
+        themeConfig?: unknown
+        buttonStyle?: string | null
+        fontFamily?: string | null
+        bio?: string | null
+        theme?: string
+        published?: boolean
       }
-      setForm({
+      setForm((f) => ({
+        ...f,
         displayName: p.user?.displayName || user?.displayName || '',
         bio: profile.bio || '',
         theme: profile.theme || 'default',
         published: !!profile.published,
         colorPalette: p.colorPalette || null,
         logoUrl: p.logoUrl || null,
-      })
+        headerStyle: (p.headerStyle as 'classic' | 'hero' | 'banner' | 'shape') || 'classic',
+        bannerUrl: p.bannerUrl || null,
+        themeConfig: toDraftConfig(p),
+      }))
     } else if (user) {
       setForm((f) => ({ ...f, displayName: user.displayName || '' }))
     }
     if (user) setUsername(user.username)
   }, [profile, user])
 
+  // Socials live in a separate endpoint; load them into the same draft form.
+  useEffect(() => {
+    setForm((f) => ({
+      ...f,
+      socials: socials.map((s) => ({
+        ...newSocialDraft(s.platform as SocialDraft['platform']),
+        value: s.value,
+        enabled: s.enabled,
+      })),
+    }))
+  }, [socials])
+
   const saveProfile = async () => {
     if (!form.displayName.trim()) {
       setSaveMsg({ type: 'error', text: 'Display name is required' })
+      return
+    }
+    const socialErr: Record<string, string> = {}
+    for (const s of form.socials) {
+      const e = validateSocialValue(s.platform, s.value)
+      if (e) socialErr[s.id] = e
+    }
+    setSocialErrors(socialErr)
+    if (Object.keys(socialErr).length > 0) {
+      setSaveMsg({ type: 'error', text: 'Please check the Social / Contact section.' })
       return
     }
     // normalize '' -> null for nullable enum (prevents CHECK / Zod enum failure)
@@ -77,7 +131,18 @@ export default function ProfilePage() {
         displayName: form.displayName.trim(),
         colorPalette: normalizedPalette,
         logoUrl: form.logoUrl || null,
+        headerStyle: form.headerStyle,
+        bannerUrl: form.bannerUrl || null,
+        themeConfig: form.themeConfig,
       })
+      await api.profileSocialsPut(
+        form.socials.map((s, i) => ({
+          platform: s.platform,
+          value: s.value.trim(),
+          enabled: s.enabled,
+          position: i,
+        }))
+      )
       await api.profilePublish(form.published)
       await reload()
       setSaveMsg({ type: 'success', text: 'Profile saved' })
@@ -96,7 +161,28 @@ export default function ProfilePage() {
     }
   }
 
-  const selectedPalette = COLOR_PALETTES.find((p) => p.value === form.colorPalette)
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: 'logoUrl' | 'bannerUrl'
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    const setBusy = field === 'logoUrl' ? setUploadingLogo : setUploadingBanner
+    setBusy(true)
+    try {
+      const res = (await api.uploadImage(file)) as { data?: { url?: string } }
+      const url = res.data?.url
+      if (url) {
+        setForm((f) => (field === 'logoUrl' ? { ...f, logoUrl: url } : { ...f, bannerUrl: url }))
+      }
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setBusy(false)
+      e.target.value = ''
+    }
+  }
 
   const saveUsername = async () => {
     const clean = username.trim().toLowerCase()
@@ -138,6 +224,9 @@ export default function ProfilePage() {
     }
   }
 
+  const draftTheme = resolveDraftConfig(form.themeConfig)
+  const profileUrl = user ? `${window.location.origin}/@${user.username}` : ''
+
   return (
     <div className="space-y-6">
       <div>
@@ -149,191 +238,324 @@ export default function ProfilePage() {
           Set the information and appearance visitors see on your public page.
         </p>
       </div>
-      <div className="card space-y-5 rounded-2xl p-5 sm:p-6">
-        <div className="space-y-2 rounded-xl border bg-muted/20 p-4">
-          <label className="text-sm font-medium">Username (public URL)</label>
-          <div className="flex gap-2">
-            <span className="inline-flex items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm text-muted-foreground">
-              /@
-            </span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-              placeholder="lensawaktu"
-              className="input rounded-l-none flex-1"
-              maxLength={30}
-            />
-            <button
-              onClick={saveUsername}
-              disabled={savingUsername || username.trim().toLowerCase() === user?.username}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 whitespace-nowrap"
-            >
-              {savingUsername ? 'Saving...' : 'Change'}
-            </button>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="card min-w-0 space-y-5 rounded-2xl p-5 sm:p-6">
+          <div className="space-y-2 rounded-xl border bg-muted/20 p-4">
+            <label className="text-sm font-medium">Username (public URL)</label>
+            <div className="flex gap-2">
+              <span className="inline-flex items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm text-muted-foreground">
+                /@
+              </span>
+              <input
+                value={username}
+                onChange={(e) =>
+                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                }
+                placeholder="lensawaktu"
+                className="input rounded-l-none flex-1"
+                maxLength={30}
+              />
+              <button
+                onClick={saveUsername}
+                disabled={savingUsername || username.trim().toLowerCase() === user?.username}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 whitespace-nowrap"
+              >
+                {savingUsername ? 'Saving...' : 'Change'}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Public URL:{' '}
+              <span className="font-mono">
+                https://links.lensawaktu.id/@{username || user?.username}
+              </span>
+            </p>
+            {username.trim().toLowerCase() !== user?.username && (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Will change from /@{user?.username} to /@
+                {username.trim().toLowerCase()}
+              </p>
+            )}
+            {usernameMsg && (
+              <p
+                className={`text-xs ${usernameMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}
+              >
+                {usernameMsg.text}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              3-30 lowercase, numbers, underscore. Must be unique.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Public URL:{' '}
-            <span className="font-mono">
-              https://links.lensawaktu.id/@{username || user?.username}
-            </span>
-          </p>
-          {username.trim().toLowerCase() !== user?.username && (
-            <p className="text-xs text-amber-600 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Will change from /@{user?.username} to /@
-              {username.trim().toLowerCase()}
-            </p>
-          )}
-          {usernameMsg && (
-            <p
-              className={`text-xs ${usernameMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}
-            >
-              {usernameMsg.text}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            3-30 lowercase, numbers, underscore. Must be unique.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">Display name</label>
+              <input
+                value={form.displayName}
+                onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                className="input mt-1"
+              />
+            </div>
+            <div className="flex items-end pb-0.5">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.published}
+                  onChange={(e) => setForm({ ...form, published: e.target.checked })}
+                />{' '}
+                Published (visible at /@{user?.username})
+              </label>
+            </div>
+          </div>
+
           <div>
-            <label className="text-sm font-medium">Display name</label>
-            <input
-              value={form.displayName}
-              onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-              className="input mt-1"
+            <label className="text-sm font-medium">Bio</label>
+            <textarea
+              value={form.bio}
+              onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              className="input mt-1 min-h-[80px]"
+              maxLength={500}
             />
           </div>
-          <div className="flex items-end pb-0.5">
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Header style</label>
+              <p className="text-xs text-muted-foreground">
+                How the top of your public profile looks. Saved with Save profile.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {HEADER_STYLES.map((h) => (
+                <button
+                  key={h.value}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, headerStyle: h.value }))}
+                  aria-pressed={form.headerStyle === h.value}
+                  className={`rounded-xl border p-3 text-left transition-colors ${
+                    form.headerStyle === h.value
+                      ? 'border-primary ring-2 ring-primary/30'
+                      : 'hover:border-muted-foreground/40'
+                  }`}
+                >
+                  <span className="block text-sm font-medium">{h.label}</span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">{h.desc}</span>
+                </button>
+              ))}
+            </div>
+            {(form.headerStyle === 'hero' || form.headerStyle === 'banner') && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Banner image</label>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    value={form.bannerUrl ?? ''}
+                    onChange={(e) => setForm({ ...form, bannerUrl: e.target.value || null })}
+                    placeholder="https://... or upload"
+                    className="input min-w-[180px] flex-1"
+                  />
+                  <label
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
+                      uploadingBanner ? 'opacity-50' : 'hover:bg-accent'
+                    }`}
+                  >
+                    {uploadingBanner ? 'Uploading…' : 'Upload'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      disabled={uploadingBanner}
+                      onChange={(e) => handleImageUpload(e, 'bannerUrl')}
+                    />
+                  </label>
+                  {form.bannerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, bannerUrl: null })}
+                      className="rounded-md border px-3 py-2 text-sm text-red-600 hover:bg-accent"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {form.bannerUrl && (
+                  <img
+                    src={form.bannerUrl}
+                    alt="Banner preview"
+                    className="h-20 w-full rounded-xl object-cover"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Theme</label>
+              <p className="text-xs text-muted-foreground">
+                Pick a complete visual preset, then fine-tune it. Changes preview instantly and are
+                only saved when you click Save profile.
+              </p>
+            </div>
+            <ThemePicker
+              config={form.themeConfig}
+              onChange={(themeConfig) => setForm((f) => ({ ...f, themeConfig }))}
+            />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={form.published}
-                onChange={(e) => setForm({ ...form, published: e.target.checked })}
-              />{' '}
-              Published (visible at /@{user?.username})
+                checked={form.themeConfig.showShare !== false}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    themeConfig: { ...f.themeConfig, showShare: e.target.checked },
+                  }))
+                }
+              />
+              Show the Share section (QR &amp; copy link) on the public profile
             </label>
           </div>
-        </div>
-        <div>
-          <label className="text-sm font-medium">Bio</label>
-          <textarea
-            value={form.bio}
-            onChange={(e) => setForm({ ...form, bio: e.target.value })}
-            className="input mt-1 min-h-[80px]"
-            maxLength={500}
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">Theme</label>
-          <select
-            value={form.theme}
-            onChange={(e) => setForm({ ...form, theme: e.target.value })}
-            className="input mt-1"
-          >
-            <option value="default">Default</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-            <option value="minimal">Minimal</option>
-            <option value="gradient">Gradient</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-2">
-            <Palette className="h-4 w-4" /> Color Palette (optional)
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {COLOR_PALETTES.map((palette) => (
-              <button
-                key={palette.value}
-                type="button"
-                onClick={() =>
-                  setForm({
-                    ...form,
-                    colorPalette: form.colorPalette === palette.value ? null : palette.value,
-                  })
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Social / Contact</label>
+              <p className="text-xs text-muted-foreground">
+                Shown as small icons, separate from your links. Changes are saved only when you
+                click Save profile.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-xs font-medium" htmlFor="social-style">
+                Icon style
+              </label>
+              <select
+                id="social-style"
+                value={form.themeConfig.socialStyle ?? 'circle'}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    themeConfig: {
+                      ...f.themeConfig,
+                      socialStyle: e.target.value as 'circle' | 'plain',
+                    },
+                  }))
                 }
-                className={`rounded-lg border p-2 transition ${form.colorPalette === palette.value ? 'border-primary ring-2 ring-primary/30' : 'hover:border-muted-foreground/50'}`}
+                className="input h-9 w-auto"
               >
-                <div className="flex gap-1 mb-1.5">
-                  {palette.colors.map((color, i) => (
-                    <div
-                      key={i}
-                      className="h-4 flex-1 rounded"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-medium">{palette.label}</span>
-              </button>
-            ))}
-          </div>
-          {selectedPalette && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Selected:</span>
-              <div className="flex gap-1">
-                {selectedPalette.colors.map((color, i) => (
-                  <div key={i} className="h-3 w-6 rounded" style={{ backgroundColor: color }} />
-                ))}
-              </div>
-              <span className="font-medium">{selectedPalette.label}</span>
+                <option value="circle">Circle (with background)</option>
+                <option value="plain">Icon only (no background)</option>
+              </select>
+              <span className="text-xs text-muted-foreground">
+                Icon color is set in Theme → Customize → “Social icon”.
+              </span>
             </div>
-          )}
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-2">
-            <Upload className="h-4 w-4" /> Logo URL (optional)
-          </label>
-          <div className="flex gap-2">
-            <input
-              value={logoInput}
-              onChange={(e) => setLogoInput(e.target.value)}
-              placeholder="https://example.com/logo.png"
-              className="input flex-1"
+            <SocialsEditor
+              items={form.socials}
+              errors={socialErrors}
+              onChange={(items) => {
+                setForm((f) => ({ ...f, socials: items }))
+                setSocialErrors({})
+              }}
             />
-            <button
-              type="button"
-              onClick={handleLogoSave}
-              disabled={!logoInput.trim()}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              Set
-            </button>
           </div>
-          {form.logoUrl && (
-            <div className="flex items-center gap-3 mt-2 p-2 rounded border bg-muted/30">
-              <img
-                src={form.logoUrl}
-                alt="Logo preview"
-                className="h-12 w-12 object-contain rounded bg-white p-1"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Upload className="h-4 w-4" /> Logo (optional)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <input
+                value={logoInput}
+                onChange={(e) => setLogoInput(e.target.value)}
+                placeholder="https://example.com/logo.png"
+                className="input min-w-[180px] flex-1"
               />
-              <span className="text-xs text-muted-foreground truncate flex-1">{form.logoUrl}</span>
               <button
                 type="button"
-                onClick={() => setForm({ ...form, logoUrl: null })}
-                className="text-xs text-red-600 hover:underline"
+                onClick={handleLogoSave}
+                disabled={!logoInput.trim()}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                Remove
+                Set
               </button>
+              <label
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm ${
+                  uploadingLogo ? 'opacity-50' : 'hover:bg-accent'
+                }`}
+              >
+                {uploadingLogo ? 'Uploading…' : 'Upload'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  disabled={uploadingLogo}
+                  onChange={(e) => handleImageUpload(e, 'logoUrl')}
+                />
+              </label>
             </div>
+            {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+            {form.logoUrl && (
+              <div className="flex items-center gap-3 mt-2 p-2 rounded border bg-muted/30">
+                <img
+                  src={form.logoUrl}
+                  alt="Logo preview"
+                  className="h-12 w-12 object-contain rounded bg-white p-1"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+                <span className="text-xs text-muted-foreground truncate flex-1">
+                  {form.logoUrl}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, logoUrl: null })}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+
+          {saveMsg && (
+            <p className={`text-sm ${saveMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+              {saveMsg.text}
+            </p>
           )}
-        </div>
-        {saveMsg && (
-          <p className={`text-sm ${saveMsg.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
-            {saveMsg.text}
+          <button
+            onClick={saveProfile}
+            disabled={saving}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save profile'}
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Username: @{user?.username} — change via API /api/me if needed. Only published profiles
+            are public.
           </p>
-        )}
-        <button
-          onClick={saveProfile}
-          disabled={saving}
-          className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow disabled:opacity-50"
-        >
-          {saving ? 'Saving...' : 'Save profile'}
-        </button>
-        <p className="text-xs text-muted-foreground">
-          Username: @{user?.username} — change via API /api/me if needed. Only published profiles
-          are public.
-        </p>
+        </div>
+
+        <aside className="w-full min-w-0 lg:sticky lg:top-6 lg:self-start">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Live preview
+          </p>
+          <ProfilePreview
+            theme={draftTheme}
+            displayName={form.displayName || user?.displayName || ''}
+            avatarUrl={profile?.avatarUrl ?? user?.avatarUrl ?? null}
+            bio={form.bio}
+            logoUrl={form.logoUrl}
+            links={links.filter((l) => l.enabled)}
+            sections={sections}
+            socials={form.socials
+              .filter((s) => s.enabled && s.value.trim())
+              .map((s) => ({ platform: s.platform, value: s.value }))}
+            profileUrl={profileUrl}
+            showShare={form.themeConfig.showShare !== false}
+            socialStyle={form.themeConfig.socialStyle === 'plain' ? 'plain' : 'circle'}
+            headerStyle={form.headerStyle}
+            bannerUrl={form.bannerUrl}
+          />
+        </aside>
       </div>
     </div>
   )

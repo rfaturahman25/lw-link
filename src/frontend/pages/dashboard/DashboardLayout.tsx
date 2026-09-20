@@ -24,25 +24,32 @@ type Profile = {
   published: boolean
   avatarUrl?: string | null
   displayName?: string
+  headerStyle?: string | null
+  bannerUrl?: string | null
 }
 type LinkItem = {
   id: string
   title: string
   url: string
   icon: string | null
+  type?: string | null
+  metadata?: string | null
   position: number
   enabled: boolean
   sectionId: string | null
 }
 type Section = { id: string; title: string; position: number }
+type Social = { platform: string; value: string; enabled: boolean; position: number }
 
 type DashboardContextType = {
   profile: Profile | null
   links: LinkItem[]
   sections: Section[]
+  socials: Social[]
   analytics: {
     totalViews: number
     totalClicks: number
+    totalSocialClicks: number
     uniqueVisitors: number
     topLinks: Array<{
       linkId: string | null
@@ -51,6 +58,7 @@ type DashboardContextType = {
       url: string | null
       icon: string | null
     }>
+    topSocials: Array<{ platform: string | null; clicks: number }>
     daily: Array<{ date: string; views: number; clicks: number }>
   } | null
   reload: () => Promise<void>
@@ -86,13 +94,14 @@ export default function DashboardLayout() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [links, setLinks] = useState<LinkItem[]>([])
   const [sections, setSections] = useState<Section[]>([])
+  const [socials, setSocials] = useState<Social[]>([])
   const [analytics, setAnalytics] = useState<DashboardContextType['analytics']>(null)
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
     setLoading(true)
     try {
-      const [pRes, lRes, sRes, aRes] = await Promise.all([
+      const [pRes, lRes, sRes, aRes, soRes] = await Promise.all([
         api.profileGet() as Promise<{
           success: boolean
           data: Profile & { user: { displayName: string; avatarUrl: string | null } }
@@ -100,6 +109,10 @@ export default function DashboardLayout() {
         api.links() as Promise<{ success: boolean; data: LinkItem[] }>,
         api.sections() as Promise<{ success: boolean; data: Section[] }>,
         api.analytics() as Promise<{ success: boolean; data: DashboardContextType['analytics'] }>,
+        api.profileSocials() as Promise<{
+          success: boolean
+          data: Array<{ platform: string; value: string; enabled?: boolean; position?: number }>
+        }>,
       ])
       const p = pRes.data
       setProfile(p)
@@ -108,6 +121,16 @@ export default function DashboardLayout() {
         ((sRes as unknown as { data: Section[] }).data || []).sort(
           (a, b) => a.position - b.position
         )
+      )
+      setSocials(
+        (soRes.data || [])
+          .map((s) => ({
+            platform: s.platform,
+            value: s.value,
+            enabled: s.enabled !== false,
+            position: s.position ?? 0,
+          }))
+          .sort((a, b) => a.position - b.position)
       )
       setAnalytics(aRes.data || null)
     } catch {
@@ -203,6 +226,7 @@ export default function DashboardLayout() {
                 profile,
                 links,
                 sections,
+                socials,
                 analytics,
                 reload: load,
                 setLinks,

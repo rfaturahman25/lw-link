@@ -1,30 +1,28 @@
 import { Link } from 'react-router-dom'
-import { Home } from 'lucide-react'
+import { Link2 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
 const Header = () => {
   const { user } = useAuth()
-
   const homeTarget = user ? '/dashboard' : '/'
-  const homeLink = user ? '/dashboard' : '/'
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-6">
-          <Link to={homeLink} className="flex items-center gap-2 font-bold text-xl">
-            <Home className="h-6 w-6" />
-            <span className="hidden sm:inline">LW-link</span>
+    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+        <Link to={homeTarget} className="flex items-center gap-2.5">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <Link2 className="h-4 w-4" />
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight">Lensa Links</span>
+        </Link>
+        <nav className="flex items-center gap-5">
+          <Link
+            to={homeTarget}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {user ? 'Dashboard' : 'Login'}
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to={homeTarget} className="text-sm font-medium hover:text-primary">
-              Home
-            </Link>
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:inline text-xs text-muted-foreground">Internal</span>
-        </div>
+        </nav>
       </div>
     </header>
   )
