@@ -5,6 +5,7 @@ export type ButtonStyle = 'rounded' | 'square' | 'pill'
 export type TextAlignment = 'left' | 'center' | 'right'
 export type AvatarShape = 'circle' | 'square' | 'rounded'
 export type EventType = 'profile_view' | 'link_click'
+export type ColorPalette = 'ocean' | 'sunset' | 'forest' | 'berry' | 'midnight' | 'candy' | 'golden' | 'monochrome'
 
 export interface User {
   id: string
@@ -31,6 +32,8 @@ export interface Profile {
   fontFamily: string
   textAlignment: TextAlignment
   avatarShape: AvatarShape
+  colorPalette?: ColorPalette | null
+  logoUrl?: string | null
   published: boolean
   createdAt: string
   updatedAt: string

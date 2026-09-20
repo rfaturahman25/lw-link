@@ -28,9 +28,20 @@ const iconMap: Record<string, React.ReactNode> = {
 
 type ProfileData = {
   user: { username: string; displayName: string; avatarUrl: string | null }
-  profile: { bio: string | null; team: string | null; company: string | null; theme?: string; backgroundColor?: string; textColor?: string }
+  profile: { bio: string | null; team: string | null; company: string | null; theme?: string; backgroundColor?: string; textColor?: string; colorPalette?: string | null; logoUrl?: string | null }
   links: Array<{ id: string; title: string; url: string; icon: string | null; sectionId: string | null }>
   sections?: Array<{ id: string; title: string; position: number }>
+}
+
+const PALETTE_STYLES: Record<string, { bgGradient: string; accentColor: string }> = {
+  ocean: { bgGradient: 'linear-gradient(135deg, #0077b6 0%, #90e0ef 100%)', accentColor: '#0077b6' },
+  sunset: { bgGradient: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 100%)', accentColor: '#ff6b35' },
+  forest: { bgGradient: 'linear-gradient(135deg, #2d6a4f 0%, #74c69d 100%)', accentColor: '#2d6a4f' },
+  berry: { bgGradient: 'linear-gradient(135deg, #9d0208 0%, #e85d04 100%)', accentColor: '#9d0208' },
+  midnight: { bgGradient: 'linear-gradient(135deg, #03045e 0%, #90e0ef 100%)', accentColor: '#03045e' },
+  candy: { bgGradient: 'linear-gradient(135deg, #ff006e 0%, #8338ec 100%)', accentColor: '#ff006e' },
+  golden: { bgGradient: 'linear-gradient(135deg, #d4af37 0%, #fefae0 100%)', accentColor: '#d4af37' },
+  monochrome: { bgGradient: 'linear-gradient(135deg, #000000 0%, #cccccc 100%)', accentColor: '#000000' },
 }
 
 const PublicProfilePage = () => {
@@ -124,11 +135,17 @@ const PublicProfilePage = () => {
   const profileUrl = `${window.location.origin}/@${data.user.username}`
   const themeBg = data.profile.backgroundColor || '#ffffff'
   const textColor = data.profile.textColor || '#000000'
+  const paletteStyle = data.profile.colorPalette ? PALETTE_STYLES[data.profile.colorPalette] : null
 
   return (
     <div className="max-w-2xl mx-auto space-y-8" style={{ backgroundColor: themeBg, color: textColor }}>
       <div className="text-center space-y-4 py-6">
-        <div className="h-28 w-28 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center mx-auto overflow-hidden">
+        {data.profile.logoUrl && (
+          <div className="mb-4">
+            <img src={data.profile.logoUrl} alt={`${data.user.displayName} logo`} className="h-16 w-auto max-w-[200px] object-contain mx-auto" />
+          </div>
+        )}
+        <div className="h-28 w-28 rounded-full flex items-center justify-center mx-auto overflow-hidden" style={paletteStyle ? { background: paletteStyle.bgGradient } : { background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)' }}>
           {data.user.avatarUrl ? (
             <img src={data.user.avatarUrl} alt={data.user.displayName} className="h-full w-full object-cover" />
           ) : (
@@ -172,9 +189,10 @@ const PublicProfilePage = () => {
                           rel="noopener noreferrer"
                           onClick={() => api.trackClick(clean, link.id).catch(() => {})}
                           className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
+                          style={paletteStyle ? { borderColor: paletteStyle.accentColor + '40' } : {}}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{iconMap[link.icon || 'default'] || iconMap.default}</div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={paletteStyle ? { backgroundColor: paletteStyle.accentColor + '20', color: paletteStyle.accentColor } : { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' }}>{iconMap[link.icon || 'default'] || iconMap.default}</div>
                             <div className="text-left">
                               <p className="font-semibold text-gray-900">{link.title}</p>
                               <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
@@ -199,9 +217,10 @@ const PublicProfilePage = () => {
                         rel="noopener noreferrer"
                         onClick={() => api.trackClick(clean, link.id).catch(() => {})}
                         className="group flex items-center justify-between rounded-xl border bg-white p-4 hover:shadow-md transition"
+                        style={paletteStyle ? { borderColor: paletteStyle.accentColor + '40' } : {}}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">{iconMap[link.icon || 'default'] || iconMap.default}</div>
+                          <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={paletteStyle ? { backgroundColor: paletteStyle.accentColor + '20', color: paletteStyle.accentColor } : { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' }}>{iconMap[link.icon || 'default'] || iconMap.default}</div>
                           <div className="text-left">
                             <p className="font-semibold text-gray-900">{link.title}</p>
                             <p className="text-xs text-muted-foreground truncate max-w-[220px]">{link.url.replace(/^https?:\/\//, '')}</p>
