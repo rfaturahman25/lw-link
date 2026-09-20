@@ -38,6 +38,7 @@ const socialIconStyleSchema = z.enum(['surface', 'tinted', 'plain'])
 const contentWidthSchema = z.enum(['compact', 'cozy', 'wide'])
 const contentDensitySchema = z.enum(['compact', 'comfortable', 'spacious'])
 const profileAlignSchema = z.enum(['center', 'left'])
+const avatarSizeSchema = z.enum(['sm', 'md', 'lg'])
 
 // Theme system: profiles.theme_config stores { themeId, overrides } as JSON text.
 const themeOverridesSchema = z.object({
@@ -48,6 +49,7 @@ const themeOverridesSchema = z.object({
   textSecondaryColor: colorSchema.optional(),
   cardColor: colorSchema.optional(),
   socialIconColor: colorSchema.optional(),
+  backgroundColor: colorSchema.optional(),
   fontFamily: fontFamilySchema.optional(),
   buttonShape: buttonShapeSchema.optional(),
 })
@@ -66,6 +68,12 @@ const themeConfigSchema = z.object({
   density: contentDensitySchema.optional(),
   profileAlign: profileAlignSchema.optional(),
   featuredLinkId: z.string().max(64).optional().nullable(),
+  // Visual builder options (additive; older configs stay valid).
+  typeScale: z.number().min(0.9).max(1.15).optional(),
+  avatarSize: avatarSizeSchema.optional(),
+  avatarRing: z.boolean().optional(),
+  seoTitle: z.string().max(120).optional(),
+  seoDescription: z.string().max(300).optional(),
 })
 
 export const usernameSchema = z

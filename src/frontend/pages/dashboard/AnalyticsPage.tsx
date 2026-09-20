@@ -46,7 +46,7 @@ export default function AnalyticsPage() {
   const maxClicks = Math.max(1, ...topLinks.map((l) => l.clicks), 1)
   const donutColors = [
     '#31AAA9',
-    '#A82020',
+    '#6366f1',
     '#6C1A1A',
     '#D3A733',
     '#5B806B',
@@ -128,7 +128,7 @@ export default function AnalyticsPage() {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Profile Views
             </p>
-            <span className="h-8 w-8 rounded-lg bg-retro-cream flex items-center justify-center text-retro-wine">
+            <span className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
               <Eye className="h-4 w-4" />
             </span>
           </div>
@@ -396,7 +396,7 @@ export default function AnalyticsPage() {
           </h3>
           <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-retro-red" /> Views
+              <span className="h-2 w-2 rounded-full bg-[#6366f1]" /> Views
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-[hsl(var(--primary))]" /> Clicks
@@ -440,12 +440,12 @@ export default function AnalyticsPage() {
                 </text>
               )
             })}
-            <path d={viewsArea} fill="#A82020" opacity="0.08" />
+            <path d={viewsArea} fill="#6366f1" opacity="0.08" />
             <path d={clicksArea} fill="hsl(var(--primary))" opacity="0.12" />
             <path
               d={viewsPath}
               fill="none"
-              stroke="#A82020"
+              stroke="#6366f1"
               strokeWidth="2.2"
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -464,7 +464,7 @@ export default function AnalyticsPage() {
                   cx={xScale(i)}
                   cy={yScale(d.views)}
                   r="3.5"
-                  fill="#A82020"
+                  fill="#6366f1"
                   stroke="white"
                   strokeWidth="1.2"
                 />

@@ -3,6 +3,7 @@ import { FONT_OPTIONS, fontStack } from './fonts'
 import { DEFAULT_THEME_ID, THEME_MAP, getThemeById } from './presets'
 import type {
   AvatarShape,
+  AvatarSize,
   ContentDensity,
   ContentWidth,
   LogoShape,
@@ -11,6 +12,7 @@ import type {
   ProfileFont,
   ProfileTheme,
   ResolvedLayout,
+  ResolvedSeo,
   ResolvedTheme,
   SocialIconStyle,
   SocialStyle,
@@ -24,11 +26,33 @@ import type {
 const FONTS: ProfileFont[] = FONT_OPTIONS.map((f) => f.value)
 const SHAPES: ThemeButtonShape[] = ['square', 'rounded', 'pill', 'outlined', 'elevated']
 const AVATAR_SHAPES: AvatarShape[] = ['circle', 'rounded', 'squircle', 'square', 'hex']
+const AVATAR_SIZES: AvatarSize[] = ['sm', 'md', 'lg']
 const NAME_TREATMENTS: NameTreatment[] = ['solid', 'gradient']
 const SOCIAL_ICON_STYLES: SocialIconStyle[] = ['surface', 'tinted', 'plain']
 const CONTENT_WIDTHS: ContentWidth[] = ['compact', 'cozy', 'wide']
 const DENSITIES: ContentDensity[] = ['compact', 'comfortable', 'spacious']
 const PROFILE_ALIGNS: ProfileAlign[] = ['center', 'left']
+
+// Type scale is a bounded multiplier, clamped on read so a malformed value can
+// never blow up the layout.
+const TYPE_SCALE_MIN = 0.9
+const TYPE_SCALE_MAX = 1.15
+const TYPE_SCALE_DEFAULT = 1
+
+function isAvatarSize(v: unknown): v is AvatarSize {
+  return typeof v === 'string' && (AVATAR_SIZES as string[]).includes(v)
+}
+
+function clampTypeScale(v: unknown): number | undefined {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return undefined
+  return Math.min(TYPE_SCALE_MAX, Math.max(TYPE_SCALE_MIN, v))
+}
+
+function cleanSeoText(v: unknown, max: number): string | undefined {
+  if (typeof v !== 'string') return undefined
+  const trimmed = v.trim()
+  return trimmed ? trimmed.slice(0, max) : undefined
+}
 
 export function isProfileFont(v: unknown): v is ProfileFont {
   return typeof v === 'string' && (FONTS as string[]).includes(v)
@@ -88,6 +112,9 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
       : cfg.featuredLinkId === null
         ? null
         : undefined
+  const typeScale = clampTypeScale(cfg.typeScale)
+  const seoTitle = cleanSeoText(cfg.seoTitle, 120)
+  const seoDescription = cleanSeoText(cfg.seoDescription, 300)
   return {
     themeId: cfg.themeId,
     overrides,
@@ -101,6 +128,11 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
     ...(isDensity(cfg.density) ? { density: cfg.density } : {}),
     ...(isProfileAlign(cfg.profileAlign) ? { profileAlign: cfg.profileAlign } : {}),
     ...(featuredLinkId !== undefined ? { featuredLinkId } : {}),
+    ...(typeScale !== undefined ? { typeScale } : {}),
+    ...(isAvatarSize(cfg.avatarSize) ? { avatarSize: cfg.avatarSize } : {}),
+    ...(typeof cfg.avatarRing === 'boolean' ? { avatarRing: cfg.avatarRing } : {}),
+    ...(seoTitle !== undefined ? { seoTitle } : {}),
+    ...(seoDescription !== undefined ? { seoDescription } : {}),
   }
 }
 
@@ -148,12 +180,31 @@ function resolveLayout(config: StoredThemeConfig | null): ResolvedLayout {
     density: config?.density ?? 'comfortable',
     align: config?.profileAlign ?? 'center',
     featuredLinkId: config?.featuredLinkId ?? null,
+    typeScale: clampTypeScale(config?.typeScale) ?? TYPE_SCALE_DEFAULT,
+    avatarSize: config?.avatarSize ?? 'md',
+    avatarRing: config?.avatarRing !== false,
+  }
+}
+
+// SEO overrides are optional; an empty title/description means "derive it from
+// the profile" (the public page handles that fallback).
+export function resolveSeo(
+  profile: { themeConfig?: unknown } | null | undefined
+): ResolvedSeo {
+  const cfg = parseStoredThemeConfig(profile?.themeConfig)
+  return {
+    title: cfg?.seoTitle ?? '',
+    description: cfg?.seoDescription ?? '',
   }
 }
 
 function applyOverrides(theme: ProfileTheme, o: ThemeOverrides): ProfileTheme {
   return {
     ...theme,
+    background: {
+      ...theme.background,
+      ...(o.backgroundColor ? { color: o.backgroundColor } : {}),
+    },
     colors: {
       ...theme.colors,
       ...(o.buttonColor ? { button: o.buttonColor } : {}),
@@ -244,6 +295,11 @@ export function toDraftConfig(
       ...(parsed.density !== undefined ? { density: parsed.density } : {}),
       ...(parsed.profileAlign !== undefined ? { profileAlign: parsed.profileAlign } : {}),
       ...(parsed.featuredLinkId !== undefined ? { featuredLinkId: parsed.featuredLinkId } : {}),
+      ...(parsed.typeScale !== undefined ? { typeScale: parsed.typeScale } : {}),
+      ...(parsed.avatarSize !== undefined ? { avatarSize: parsed.avatarSize } : {}),
+      ...(parsed.avatarRing !== undefined ? { avatarRing: parsed.avatarRing } : {}),
+      ...(parsed.seoTitle !== undefined ? { seoTitle: parsed.seoTitle } : {}),
+      ...(parsed.seoDescription !== undefined ? { seoDescription: parsed.seoDescription } : {}),
     }
   }
   const legacyId = getThemeById(profile?.colorPalette)?.id || DEFAULT_THEME_ID
@@ -319,6 +375,12 @@ const AVATAR_RADIUS: Record<AvatarShape, string> = {
   squircle: '30%',
   square: '0.5rem',
   hex: '0px',
+}
+
+const AVATAR_SIZE_PX: Record<AvatarSize, string> = {
+  sm: '76px',
+  md: '96px',
+  lg: '120px',
 }
 
 // Single source of truth for theme -> CSS variables. Both the public profile and the
@@ -401,9 +463,11 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     '--pp-content-width': CONTENT_WIDTH_PX[layout.contentWidth],
     '--pp-section-gap': GAP_REM[layout.density],
     '--pp-link-gap': LINK_GAP_REM[layout.density],
+    '--pp-type-scale': String(layout.typeScale),
+    '--pp-avatar-size': AVATAR_SIZE_PX[layout.avatarSize],
     '--pp-avatar-radius': AVATAR_RADIUS[layout.avatarShape],
     '--pp-avatar-ring': hexToRgba(c.accent, 0.55),
-    '--pp-avatar-ring-width': '3px',
+    '--pp-avatar-ring-width': layout.avatarRing ? '3px' : '0px',
     '--pp-avatar-shadow': theme.isDark
       ? '0 12px 30px rgba(0,0,0,0.5)'
       : '0 10px 26px rgba(15,23,42,0.16)',

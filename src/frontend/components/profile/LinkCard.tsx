@@ -1,26 +1,6 @@
-import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
-import {
-  Github,
-  Linkedin,
-  Globe,
-  Mail,
-  Link as LinkIcon,
-  Instagram,
-  Youtube,
-  Facebook,
-  ExternalLink,
-  FileSpreadsheet,
-  FileText,
-  ShoppingBag,
-  Phone,
-  Image as ImageIcon,
-  Video,
-  Music,
-  MapPin,
-  Headphones,
-  Ban,
-} from 'lucide-react'
-import { WhatsAppIcon, XIcon } from '../icons/BrandIcons'
+import type { MouseEvent as ReactMouseEvent } from 'react'
+import { ExternalLink, MapPin } from 'lucide-react'
+import { renderLinkIcon } from './linkIcons'
 import { parseSmartMetadata } from './smartLink'
 
 export type ProfileViewLink = {
@@ -34,30 +14,6 @@ export type ProfileViewLink = {
   showUrl?: boolean | null
   align?: string | null
   thumbnail?: string | null
-}
-
-const iconMap: Record<string, ReactNode> = {
-  github: <Github className="h-5 w-5" />,
-  linkedin: <Linkedin className="h-5 w-5" />,
-  twitter: <XIcon className="h-5 w-5" />,
-  call: <Headphones className="h-5 w-5" />,
-  globe: <Globe className="h-5 w-5" />,
-  mail: <Mail className="h-5 w-5" />,
-  instagram: <Instagram className="h-5 w-5" />,
-  youtube: <Youtube className="h-5 w-5" />,
-  facebook: <Facebook className="h-5 w-5" />,
-  whatsapp: <WhatsAppIcon className="h-5 w-5" />,
-  sheet: <FileSpreadsheet className="h-5 w-5" />,
-  file: <FileText className="h-5 w-5" />,
-  shop: <ShoppingBag className="h-5 w-5" />,
-  phone: <Phone className="h-5 w-5" />,
-  image: <ImageIcon className="h-5 w-5" />,
-  video: <Video className="h-5 w-5" />,
-  music: <Music className="h-5 w-5" />,
-  tiktok: <Music className="h-5 w-5" />,
-  none: <Ban className="h-5 w-5" />,
-  link: <LinkIcon className="h-5 w-5" />,
-  default: <LinkIcon className="h-5 w-5" />,
 }
 
 type Props = {
@@ -101,12 +57,12 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
             className="pp-link-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
             style={{ background: 'var(--pp-link-icon-bg)', color: 'var(--pp-link-icon-color)' }}
           >
-            {iconMap[link.icon || 'default'] || iconMap.default}
+            {renderLinkIcon(link.icon)}
           </div>
         )}
         <div className={`min-w-0 flex-1 ${align}`}>
           <p
-            className="text-[15px] font-semibold leading-tight"
+            className="pp-link-title font-semibold leading-tight"
             style={{ color: 'var(--pp-link-text)' }}
           >
             {link.title}
@@ -114,7 +70,7 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
           {showLoc ? (
             <div className="mt-1 space-y-0.5">
               <p
-                className="flex items-center gap-1 text-xs"
+                className="pp-link-sub flex items-center gap-1"
                 style={{ color: 'var(--pp-link-secondary)' }}
               >
                 <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -122,7 +78,7 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
               </p>
               {locSecondary && (
                 <p
-                  className="break-words text-xs leading-snug"
+                  className="pp-link-sub break-words leading-snug"
                   style={{ color: 'var(--pp-link-secondary)' }}
                 >
                   {locSecondary}
@@ -130,7 +86,10 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
               )}
             </div>
           ) : showUrl ? (
-            <p className="mt-1 truncate text-xs" style={{ color: 'var(--pp-link-secondary)' }}>
+            <p
+              className="pp-link-sub mt-1 truncate"
+              style={{ color: 'var(--pp-link-secondary)' }}
+            >
               {link.url.replace(/^https?:\/\//, '')}
             </p>
           ) : null}

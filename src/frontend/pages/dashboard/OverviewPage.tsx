@@ -18,7 +18,7 @@ export default function OverviewPage() {
           </p>
         </div>
         <span
-          className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${profile?.published ? 'bg-primary/15 text-primary' : 'bg-retro-cream text-retro-wine'}`}
+          className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${profile?.published ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}
         >
           {profile?.published ? 'Published profile' : 'Draft profile'}
         </span>
@@ -37,7 +37,7 @@ export default function OverviewPage() {
         <div className="card rounded-2xl p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-muted-foreground">Views</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-retro-cream text-retro-wine">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Eye className="h-4 w-4" />
             </span>
           </div>
@@ -47,24 +47,24 @@ export default function OverviewPage() {
         <div className="card rounded-2xl p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm text-muted-foreground">Clicks</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-retro-red/10 text-retro-red">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <MousePointerClick className="h-4 w-4" />
             </span>
           </div>
           <p className="mt-5 text-3xl font-bold tracking-tight">{analytics?.totalClicks ?? 0}</p>
           <p className="mt-1 text-xs text-muted-foreground">link interactions recorded</p>
         </div>
-        <div className="rounded-2xl bg-retro-wine p-4 text-retro-cream sm:p-5">
+        <div className="rounded-2xl bg-primary p-4 text-primary-foreground sm:p-5">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm text-retro-cream/75">Status</p>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-retro-cream/15">
+            <p className="text-sm text-primary-foreground/70">Status</p>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/10">
               <Sparkles className="h-4 w-4" />
             </span>
           </div>
           <p className="mt-5 text-2xl font-bold tracking-tight">
             {profile?.published ? 'Published' : 'Draft'}
           </p>
-          <p className="mt-1 text-xs text-retro-cream/75">
+          <p className="mt-1 text-xs text-primary-foreground/70">
             {profile?.published ? 'visible to visitors' : 'not publicly visible'}
           </p>
         </div>
@@ -85,7 +85,7 @@ export default function OverviewPage() {
             onClick={() => navigate('/dashboard/profile')}
             className="rounded-xl border px-4 py-2.5 text-sm font-medium hover:bg-accent"
           >
-            Edit profile
+            Design profile
           </button>
           <button
             onClick={() => navigate('/dashboard/analytics')}

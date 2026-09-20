@@ -1,17 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useDashboardContext } from './DashboardLayout'
+import { useDashboardContext } from '../../pages/dashboard/DashboardLayout'
 import { api } from '../../services/api'
-import { useAuth } from '../../hooks/useAuth'
-import ProfilePreview from '../../components/profile/ProfilePreview'
-import {
-  resolveFeaturedLinkId,
-  resolveLogoShape,
-  resolveProfileTheme,
-  resolveShowShare,
-  resolveSocialStyle,
-} from '../../themes'
-import { WhatsAppIcon, XIcon } from '../../components/icons/BrandIcons'
-import { isMapsUrl, parseSmartMetadata } from '../../components/profile/smartLink'
+import { isMapsUrl, parseSmartMetadata } from '../profile/smartLink'
 import {
   DndContext,
   closestCenter,
@@ -32,75 +22,14 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import {
   GripVertical,
-  Github,
-  Linkedin,
-  Globe,
-  Mail,
-  Instagram,
-  Youtube,
-  Facebook,
   Link as LinkIcon,
-  FileSpreadsheet,
-  FileText,
-  ShoppingBag,
-  Phone,
-  Image as ImageIcon,
-  Music,
-  Video,
   Plus,
   Edit2,
   Trash2,
-  MoreVertical,
   Folder,
   MapPin,
-  Headphones,
-  Ban,
 } from 'lucide-react'
-
-const ICON_OPTIONS = [
-  { value: 'link', label: 'Link', icon: LinkIcon },
-  { value: 'none', label: 'No icon', icon: Ban },
-  { value: 'instagram', label: 'Instagram', icon: Instagram },
-  { value: 'whatsapp', label: 'WhatsApp', icon: WhatsAppIcon },
-  { value: 'sheet', label: 'Google Sheet', icon: FileSpreadsheet },
-  { value: 'globe', label: 'Website', icon: Globe },
-  { value: 'youtube', label: 'YouTube', icon: Youtube },
-  { value: 'tiktok', label: 'TikTok', icon: Music },
-  { value: 'github', label: 'GitHub', icon: Github },
-  { value: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-  { value: 'twitter', label: 'X', icon: XIcon },
-  { value: 'facebook', label: 'Facebook', icon: Facebook },
-  { value: 'mail', label: 'Email', icon: Mail },
-  { value: 'phone', label: 'Phone', icon: Phone },
-  { value: 'call', label: 'Call Center', icon: Headphones },
-  { value: 'file', label: 'File', icon: FileText },
-  { value: 'shop', label: 'Shop', icon: ShoppingBag },
-  { value: 'image', label: 'Image', icon: ImageIcon },
-  { value: 'video', label: 'Video', icon: Video },
-] as const
-
-const iconMap: Record<string, React.ReactNode> = {
-  github: <Github className="h-5 w-5" />,
-  linkedin: <Linkedin className="h-5 w-5" />,
-  twitter: <XIcon className="h-5 w-5" />,
-  call: <Headphones className="h-5 w-5" />,
-  globe: <Globe className="h-5 w-5" />,
-  mail: <Mail className="h-5 w-5" />,
-  instagram: <Instagram className="h-5 w-5" />,
-  youtube: <Youtube className="h-5 w-5" />,
-  facebook: <Facebook className="h-5 w-5" />,
-  whatsapp: <WhatsAppIcon className="h-5 w-5" />,
-  sheet: <FileSpreadsheet className="h-5 w-5" />,
-  link: <LinkIcon className="h-5 w-5" />,
-  file: <FileText className="h-5 w-5" />,
-  shop: <ShoppingBag className="h-5 w-5" />,
-  phone: <Phone className="h-5 w-5" />,
-  image: <ImageIcon className="h-5 w-5" />,
-  video: <Video className="h-5 w-5" />,
-  music: <Music className="h-5 w-5" />,
-  tiktok: <Music className="h-5 w-5" />,
-  default: <LinkIcon className="h-5 w-5" />,
-}
+import { ICON_OPTIONS, renderLinkIcon } from '../profile/linkIcons'
 
 // Drop target for a section (or the unsectioned group) so links can be dragged across sections.
 function Droppable({
@@ -169,7 +98,7 @@ function SortableLinkItem({
       </button>
       {link.icon !== 'none' && (
         <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-          {iconMap[link.icon || 'link'] || iconMap.default}
+          {renderLinkIcon(link.icon)}
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -292,69 +221,27 @@ function SortableSection({
   )
 }
 
-export default function LinksPage() {
-  const { links, sections, socials, profile, reload, setLinks, setSections } =
-    useDashboardContext() as unknown as {
-      links: Array<{
-        id: string
-        title: string
-        url: string
-        icon: string | null
-        align?: string | null
-        type?: string | null
-        metadata?: string | null
-        showUrl?: boolean | null
-        thumbnail?: string | null
-        enabled: boolean
-        sectionId: string | null
-        position: number
-      }>
-      sections: Array<{ id: string; title: string; position: number }>
-      socials: Array<{ platform: string; value: string; enabled: boolean; position: number }>
-      profile: {
-        bio?: string | null
-        logoUrl?: string | null
-        themeConfig?: unknown
-        colorPalette?: string | null
-        buttonStyle?: string | null
-        fontFamily?: string | null
-        headerStyle?: string | null
-        bannerUrl?: string | null
-        user?: { displayName: string; avatarUrl: string | null }
-      } | null
-      reload: () => Promise<void>
-      setLinks: React.Dispatch<React.SetStateAction<any[]>>
-      setSections: React.Dispatch<React.SetStateAction<Array<{ id: string; title: string; position: number }>>>
-    }
-  const { user } = useAuth()
-  const previewTheme = useMemo(() => resolveProfileTheme(profile), [profile])
-  const previewUrl = user ? `${window.location.origin}/@${user.username}` : ''
-  // Memoised so typing/selecting in the form does not re-render the whole preview
-  // (and its QR/map iframes), which was making the editor feel laggy.
-  const previewElement = useMemo(
-    () => (
-      <ProfilePreview
-        theme={previewTheme}
-        displayName={profile?.user?.displayName || user?.displayName || ''}
-        avatarUrl={profile?.user?.avatarUrl ?? user?.avatarUrl ?? null}
-        bio={profile?.bio ?? null}
-        logoUrl={profile?.logoUrl ?? null}
-        links={links.filter((l) => l.enabled)}
-        sections={sections}
-        socials={socials
-          .filter((s) => s.enabled)
-          .map((s) => ({ platform: s.platform, value: s.value }))}
-        profileUrl={previewUrl}
-        showShare={resolveShowShare(profile)}
-        socialStyle={resolveSocialStyle(profile)}
-        headerStyle={(profile?.headerStyle as 'classic' | 'hero' | 'banner' | 'shape') ?? 'classic'}
-        bannerUrl={profile?.bannerUrl ?? null}
-        logoShape={resolveLogoShape(profile)}
-        featuredLinkId={resolveFeaturedLinkId(profile)}
-      />
-    ),
-    [previewTheme, profile, user, links, sections, socials, previewUrl]
-  )
+export default function LinksManager({ embedded = false }: { embedded?: boolean }) {
+  const { links, sections, reload, setLinks, setSections } = useDashboardContext() as unknown as {
+    links: Array<{
+      id: string
+      title: string
+      url: string
+      icon: string | null
+      align?: string | null
+      type?: string | null
+      metadata?: string | null
+      showUrl?: boolean | null
+      thumbnail?: string | null
+      enabled: boolean
+      sectionId: string | null
+      position: number
+    }>
+    sections: Array<{ id: string; title: string; position: number }>
+    reload: () => Promise<void>
+    setLinks: React.Dispatch<React.SetStateAction<any[]>>
+    setSections: React.Dispatch<React.SetStateAction<Array<{ id: string; title: string; position: number }>>>
+  }
 
   const [linkForm, setLinkForm] = useState({
     title: '',
@@ -622,15 +509,24 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Profile content
-          </p>
-          <h2 className="mt-1 text-3xl font-bold tracking-tight">Links</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add, organize, and prioritize the places you want to share.
-          </p>
+          {embedded ? (
+            <p className="text-sm font-semibold">
+              Links &amp; sections{' '}
+              <span className="font-normal text-muted-foreground">({links.length})</span>
+            </p>
+          ) : (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                Profile content
+              </p>
+              <h2 className="mt-1 text-3xl font-bold tracking-tight">Links</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add, organize, and prioritize the places you want to share.
+              </p>
+            </>
+          )}
         </div>
         <button
           onClick={() => setShowAddSection((v) => !v)}
@@ -640,8 +536,7 @@ export default function LinksPage() {
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-6">
+      <div className="min-w-0 space-y-6">
       {showAddSection && (
         <form onSubmit={handleAddSection} className="card space-y-2 rounded-2xl p-4">
           <div className="flex gap-2">
@@ -990,14 +885,6 @@ export default function LinksPage() {
         </Droppable>
       </div>
       </DndContext>
-        </div>
-
-        <aside className="w-full min-w-0 lg:sticky lg:top-6 lg:self-start">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Live preview
-          </p>
-          {previewElement}
-        </aside>
       </div>
     </div>
   )

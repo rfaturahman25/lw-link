@@ -6,6 +6,7 @@ import {
   THEME_MAP,
   parseStoredThemeConfig,
   resolveProfileTheme,
+  resolveSeo,
   resolveShowShare,
   resolveTheme,
   themeToCssVars,
@@ -159,6 +160,9 @@ describe('theme layout options', () => {
       density: 'comfortable',
       align: 'center',
       featuredLinkId: null,
+      typeScale: 1,
+      avatarSize: 'md',
+      avatarRing: true,
     })
   })
 
@@ -179,6 +183,70 @@ describe('theme layout options', () => {
     expect(draft.avatarShape).toBe('squircle')
     expect(draft.contentWidth).toBe('compact')
     expect(draft.featuredLinkId).toBe('link-1')
+  })
+})
+
+describe('visual builder theme options', () => {
+  it('clamps the type scale and reflects it in CSS variables', () => {
+    const low = resolveTheme({ themeId: 'mesh', typeScale: 0.1 })
+    const high = resolveTheme({ themeId: 'mesh', typeScale: 9 })
+    expect(low.layout.typeScale).toBe(0.9)
+    expect(high.layout.typeScale).toBe(1.15)
+    const vars = themeToCssVars(resolveTheme({ themeId: 'mesh', typeScale: 1.1 })) as Record<
+      string,
+      string
+    >
+    expect(vars['--pp-type-scale']).toBe('1.1')
+  })
+
+  it('resolves avatar size and ring options into CSS variables', () => {
+    const vars = themeToCssVars(
+      resolveTheme({ themeId: 'mesh', avatarSize: 'lg', avatarRing: false })
+    ) as Record<string, string>
+    expect(vars['--pp-avatar-size']).toBe('120px')
+    expect(vars['--pp-avatar-ring-width']).toBe('0px')
+  })
+
+  it('applies a background colour override without touching gradients', () => {
+    const theme = resolveTheme({
+      themeId: 'aurora',
+      overrides: { backgroundColor: '#123456' },
+    })
+    expect(theme.background.color).toBe('#123456')
+    expect(theme.background.image).toBeTruthy()
+    const vars = themeToCssVars(theme) as Record<string, string>
+    expect(vars['--pp-bg-color']).toBe('#123456')
+  })
+
+  it('resolves SEO overrides and falls back to empty strings', () => {
+    expect(resolveSeo({ themeConfig: null })).toEqual({ title: '', description: '' })
+    const seo = resolveSeo({
+      themeConfig: JSON.stringify({
+        themeId: 'mesh',
+        seoTitle: '  My Page  ',
+        seoDescription: 'A description',
+      }),
+    })
+    expect(seo.title).toBe('My Page')
+    expect(seo.description).toBe('A description')
+  })
+
+  it('round-trips builder options through the draft config', () => {
+    const draft = toDraftConfig({
+      themeConfig: JSON.stringify({
+        themeId: 'mesh',
+        typeScale: 1.05,
+        avatarSize: 'sm',
+        avatarRing: false,
+        seoTitle: 'Hello',
+        seoDescription: 'World',
+      }),
+    })
+    expect(draft.typeScale).toBe(1.05)
+    expect(draft.avatarSize).toBe('sm')
+    expect(draft.avatarRing).toBe(false)
+    expect(draft.seoTitle).toBe('Hello')
+    expect(draft.seoDescription).toBe('World')
   })
 })
 

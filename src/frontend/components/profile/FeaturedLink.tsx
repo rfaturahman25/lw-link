@@ -31,7 +31,7 @@ export default function FeaturedLink({ link, interactive = false, onLinkClick }:
       <img src={link.thumbnail as string} alt="" className="pp-featured-img" loading="lazy" />
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <p
-          className="min-w-0 truncate text-[15px] font-semibold"
+          className="pp-link-title min-w-0 truncate font-semibold"
           style={{ color: 'var(--pp-text)' }}
         >
           {link.title}

@@ -6,8 +6,7 @@ import PublicProfilePage from './public/PublicProfilePage'
 import NotFoundPage from './NotFoundPage'
 import DashboardLayout from './dashboard/DashboardLayout'
 import OverviewPage from './dashboard/OverviewPage'
-import ProfilePage from './dashboard/ProfilePage'
-import LinksPage from './dashboard/LinksPage'
+import BuilderPage from './dashboard/BuilderPage'
 import AnalyticsPage from './dashboard/AnalyticsPage'
 import UsersPage from './dashboard/UsersPage'
 import AuditLogsPage from './dashboard/AuditLogsPage'
@@ -64,10 +63,11 @@ export default function App() {
           }
         >
           <Route index element={<OverviewPage />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="links" element={<LinksPage />} />
-          <Route path="links/:id" element={<LinksPage />} />
-          <Route path="links/:id/edit" element={<LinksPage />} />
+          <Route path="profile" element={<BuilderPage />} />
+          <Route path="builder" element={<BuilderPage />} />
+          <Route path="links" element={<BuilderPage initialMode="links" />} />
+          <Route path="links/:id" element={<BuilderPage initialMode="links" />} />
+          <Route path="links/:id/edit" element={<BuilderPage initialMode="links" />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="users" element={<RequireAdmin><UsersPage /></RequireAdmin>} />
           <Route path="users/:id" element={<RequireAdmin><UsersPage /></RequireAdmin>} />

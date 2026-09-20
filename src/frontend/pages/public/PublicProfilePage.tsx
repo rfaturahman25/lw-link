@@ -8,6 +8,7 @@ import {
   resolveFeaturedLinkId,
   resolveLogoShape,
   resolveProfileTheme,
+  resolveSeo,
   resolveShowShare,
   resolveSocialStyle,
   resolveTheme,
@@ -134,9 +135,15 @@ const PublicProfilePage = () => {
       .then((r: unknown) => {
         const res = r as { success: boolean; data: ProfileData }
         setData(res.data)
-        // SEO: title + meta
-        document.title = `${res.data.user.displayName} — ${res.data.profile.bio?.slice(0, 60) || 'Lensa Links'}`
-        const desc = res.data.profile.bio || `${res.data.user.displayName} on Lensa Links`
+        // SEO: title + meta. Explicit SEO overrides win over the derived defaults.
+        const seo = resolveSeo(res.data.profile)
+        document.title =
+          seo.title ||
+          `${res.data.user.displayName} — ${res.data.profile.bio?.slice(0, 60) || 'Lensa Links'}`
+        const desc =
+          seo.description ||
+          res.data.profile.bio ||
+          `${res.data.user.displayName} on Lensa Links`
         let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null
         if (!meta) {
           meta = document.createElement('meta')
@@ -154,7 +161,7 @@ const PublicProfilePage = () => {
           }
           el.content = content
         }
-        setOg('og:title', res.data.user.displayName)
+        setOg('og:title', seo.title || res.data.user.displayName)
         setOg('og:description', desc.slice(0, 200))
         setOg('og:url', `${window.location.origin}/@${res.data.user.username}`)
         if (res.data.user.avatarUrl) setOg('og:image', res.data.user.avatarUrl)

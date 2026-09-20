@@ -73,6 +73,7 @@ export type ThemeOverrides = {
   textSecondaryColor?: string
   cardColor?: string
   socialIconColor?: string
+  backgroundColor?: string
   fontFamily?: ProfileFont
   buttonShape?: ThemeButtonShape
 }
@@ -82,6 +83,9 @@ export type ThemeOverrides = {
 export type SocialStyle = 'circle' | 'plain'
 export type LogoShape = 'plain' | 'circle'
 
+// Public profile header composition. Stored on profiles.headerStyle.
+export type ProfileHeaderStyle = 'classic' | 'hero' | 'banner' | 'shape'
+
 // Layout / identity options. These are additive, optional, and stored inside
 // theme_config so older configs keep working untouched.
 export type AvatarShape = 'circle' | 'rounded' | 'squircle' | 'square' | 'hex'
@@ -90,7 +94,10 @@ export type SocialIconStyle = 'surface' | 'tinted' | 'plain'
 export type ContentWidth = 'compact' | 'cozy' | 'wide'
 export type ContentDensity = 'compact' | 'comfortable' | 'spacious'
 export type ProfileAlign = 'center' | 'left'
+export type AvatarSize = 'sm' | 'md' | 'lg'
 
+// Builder-only, additive layout options. Every field is optional so configs
+// written before the visual builder keep resolving unchanged.
 export type LayoutOptions = {
   avatarShape?: AvatarShape
   nameTreatment?: NameTreatment
@@ -99,6 +106,16 @@ export type LayoutOptions = {
   density?: ContentDensity
   profileAlign?: ProfileAlign
   featuredLinkId?: string | null
+  // Global type multiplier applied on top of every resolved font size (0.9–1.15).
+  typeScale?: number
+  avatarSize?: AvatarSize
+  avatarRing?: boolean
+}
+
+// Optional SEO overrides. Stored inside theme_config so no schema change is needed.
+export type SeoOptions = {
+  seoTitle?: string
+  seoDescription?: string
 }
 
 export type StoredThemeConfig = {
@@ -107,7 +124,8 @@ export type StoredThemeConfig = {
   showShare?: boolean
   socialStyle?: SocialStyle
   logoShape?: LogoShape
-} & LayoutOptions
+} & LayoutOptions &
+  SeoOptions
 
 // Resolved layout consumed by the renderer + CSS variable builder. Every field
 // has a concrete value so components never branch on "undefined".
@@ -119,6 +137,16 @@ export type ResolvedLayout = {
   density: ContentDensity
   align: ProfileAlign
   featuredLinkId: string | null
+  typeScale: number
+  avatarSize: AvatarSize
+  avatarRing: boolean
+}
+
+// Resolved SEO values. Both may be empty strings when the owner has not set them;
+// the public page then falls back to the display name + bio.
+export type ResolvedSeo = {
+  title: string
+  description: string
 }
 
 // A preset theme plus the resolved layout. The renderer only ever needs this.

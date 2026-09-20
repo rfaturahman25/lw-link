@@ -6,10 +6,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Link } from 'react-router-dom'
 import {
   BarChart3,
-  Link as LinkIcon,
-  User,
-  Shield,
-  Crown,
+  Palette,
   ScrollText,
   Users,
   LogOut,
@@ -26,6 +23,11 @@ type Profile = {
   displayName?: string
   headerStyle?: string | null
   bannerUrl?: string | null
+  colorPalette?: string | null
+  logoUrl?: string | null
+  fontFamily?: string | null
+  themeConfig?: unknown
+  user?: { displayName: string; avatarUrl: string | null }
 }
 type LinkItem = {
   id: string
@@ -162,11 +164,8 @@ export default function DashboardLayout() {
             <NavLink to="/dashboard" end className={navClass}>
               <BarChart3 className="h-4 w-4" /> Overview
             </NavLink>
-            <NavLink to="/dashboard/links" className={navClass}>
-              <LinkIcon className="h-4 w-4" /> Links
-            </NavLink>
             <NavLink to="/dashboard/profile" className={navClass}>
-              <User className="h-4 w-4" /> Profile
+              <Palette className="h-4 w-4" /> Builder
             </NavLink>
             <NavLink to="/dashboard/analytics" className={navClass}>
               <BarChart3 className="h-4 w-4" /> Analytics
