@@ -18,7 +18,7 @@ import {
   Headphones,
   Ban,
 } from 'lucide-react'
-import { WhatsAppIcon, XIcon } from '../icons/BrandIcons'
+import { TikTokIcon, WhatsAppIcon, XIcon } from '../icons/BrandIcons'
 
 // Single source of truth for the link icon picker and renderer. Previously the
 // dashboard editor and the public card each kept their own copy, which risked
@@ -37,7 +37,7 @@ export const ICON_OPTIONS: LinkIconOption[] = [
   { value: 'sheet', label: 'Google Sheet', icon: FileSpreadsheet },
   { value: 'globe', label: 'Website', icon: Globe },
   { value: 'youtube', label: 'YouTube', icon: Youtube },
-  { value: 'tiktok', label: 'TikTok', icon: Music },
+  { value: 'tiktok', label: 'TikTok', icon: TikTokIcon },
   { value: 'github', label: 'GitHub', icon: Github },
   { value: 'linkedin', label: 'LinkedIn', icon: Linkedin },
   { value: 'twitter', label: 'X', icon: XIcon },
@@ -68,7 +68,7 @@ const MAP: Record<string, ReactNode> = {  github: <Github className="h-5 w-5" />
   image: <ImageIcon className="h-5 w-5" />,
   video: <Video className="h-5 w-5" />,
   music: <Music className="h-5 w-5" />,
-  tiktok: <Music className="h-5 w-5" />,
+  tiktok: <TikTokIcon className="h-5 w-5" />,
   none: <Ban className="h-5 w-5" />,
   link: <LinkIcon className="h-5 w-5" />,
   default: <LinkIcon className="h-5 w-5" />,

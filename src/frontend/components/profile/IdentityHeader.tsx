@@ -48,19 +48,25 @@ export default function IdentityHeader({
 
   const bioNode = bio?.trim() ? <p className="pp-bio">{bio}</p> : null
 
-  const bannerImg = (h: string) =>
-    bannerUrl ? (
-      <img src={bannerUrl} alt="" className={`${h} w-full rounded-2xl object-cover`} />
-    ) : (
-      <div className={`${h} w-full rounded-2xl`} style={bannerFallback} />
-    )
+  const bannerImg = (h: string) => (
+    <div className={`pp-banner ${h} w-full`}>
+      {bannerUrl ? (
+        <img src={bannerUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <div className="h-full w-full" style={bannerFallback} />
+      )}
+      <span className="pp-banner-scrim" aria-hidden="true" />
+    </div>
+  )
 
   const inner =
     headerStyle === 'banner' ? (
       <>
         <div>
-          {bannerImg('h-28 sm:h-32')}
-          <div className="-mt-10 flex justify-center">{avatar}</div>
+          {bannerImg('h-32 sm:h-40')}
+          <div className="-mt-12 flex justify-center">
+            <span className="pp-avatar-halo">{avatar}</span>
+          </div>
         </div>
         {nameNode}
         {bioNode}
@@ -68,10 +74,12 @@ export default function IdentityHeader({
     ) : headerStyle === 'hero' ? (
       <>
         <div className="relative">
-          {bannerImg('h-36 sm:h-44')}
-          <div className="absolute inset-x-0 -bottom-10 flex justify-center">{avatar}</div>
+          {bannerImg('h-40 sm:h-48')}
+          <div className="absolute inset-x-0 -bottom-12 flex justify-center">
+            <span className="pp-avatar-halo">{avatar}</span>
+          </div>
         </div>
-        <div className="space-y-3 pt-10">
+        <div className="space-y-3 pt-12">
           {nameNode}
           {bioNode}
         </div>

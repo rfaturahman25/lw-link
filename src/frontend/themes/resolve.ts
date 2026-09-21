@@ -23,6 +23,9 @@ import type {
 
 // Single source of truth: the font allowlist is derived from FONT_OPTIONS so the
 // resolver can never drift from the fonts the UI actually offers.
+// Sentinel for the unsectioned links group inside `theme_config.sectionOrder`.
+export const UNSECTIONED_GROUP = '__none__'
+
 const FONTS: ProfileFont[] = FONT_OPTIONS.map((f) => f.value)
 const SHAPES: ThemeButtonShape[] = ['square', 'rounded', 'pill', 'outlined', 'elevated']
 const AVATAR_SHAPES: AvatarShape[] = ['circle', 'rounded', 'squircle', 'square', 'hex']
@@ -32,6 +35,42 @@ const SOCIAL_ICON_STYLES: SocialIconStyle[] = ['surface', 'tinted', 'plain']
 const CONTENT_WIDTHS: ContentWidth[] = ['compact', 'cozy', 'wide']
 const DENSITIES: ContentDensity[] = ['compact', 'comfortable', 'spacious']
 const PROFILE_ALIGNS: ProfileAlign[] = ['center', 'left']
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
+
+// Overrides are user-authored JSON, so every field is validated on read. This
+// also lets a font/shape be retired from the picker without breaking a saved
+// config: the stale value is simply dropped and the preset value applies.
+function sanitizeOverrides(raw: unknown): ThemeOverrides {
+  if (!raw || typeof raw !== 'object') return {}
+  const o = raw as Record<string, unknown>
+  const out: ThemeOverrides = {}
+  const colorKeys = [
+    'buttonColor',
+    'buttonTextColor',
+    'accentColor',
+    'textColor',
+    'textSecondaryColor',
+    'cardColor',
+    'socialIconColor',
+    'backgroundColor',
+  ] as const
+  for (const key of colorKeys) {
+    const v = o[key]
+    if (typeof v === 'string' && HEX_COLOR_RE.test(v)) out[key] = v
+  }
+  if (isProfileFont(o.fontFamily)) out.fontFamily = o.fontFamily
+  if (isButtonShape(o.buttonShape)) out.buttonShape = o.buttonShape
+  return out
+}
+
+function sanitizeSectionOrder(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const keys = raw
+    .filter((v): v is string => typeof v === 'string' && v.length > 0 && v.length <= 64)
+    .slice(0, 60)
+  return keys.length > 0 ? keys : undefined
+}
 
 // Type scale is a bounded multiplier, clamped on read so a malformed value can
 // never blow up the layout.
@@ -100,7 +139,7 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
   if (!value || typeof value !== 'object') return null
   const cfg = value as StoredThemeConfig
   if (typeof cfg.themeId !== 'string' || !THEME_MAP[cfg.themeId]) return null
-  const overrides = cfg.overrides && typeof cfg.overrides === 'object' ? cfg.overrides : null
+  const overrides = sanitizeOverrides(cfg.overrides)
   const showShare = typeof cfg.showShare === 'boolean' ? cfg.showShare : undefined
   const socialStyle =
     cfg.socialStyle === 'plain' || cfg.socialStyle === 'circle' ? cfg.socialStyle : undefined
@@ -115,6 +154,7 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
   const typeScale = clampTypeScale(cfg.typeScale)
   const seoTitle = cleanSeoText(cfg.seoTitle, 120)
   const seoDescription = cleanSeoText(cfg.seoDescription, 300)
+  const sectionOrder = sanitizeSectionOrder(cfg.sectionOrder)
   return {
     themeId: cfg.themeId,
     overrides,
@@ -131,6 +171,7 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
     ...(typeScale !== undefined ? { typeScale } : {}),
     ...(isAvatarSize(cfg.avatarSize) ? { avatarSize: cfg.avatarSize } : {}),
     ...(typeof cfg.avatarRing === 'boolean' ? { avatarRing: cfg.avatarRing } : {}),
+    ...(sectionOrder !== undefined ? { sectionOrder } : {}),
     ...(seoTitle !== undefined ? { seoTitle } : {}),
     ...(seoDescription !== undefined ? { seoDescription } : {}),
   }
@@ -183,6 +224,7 @@ function resolveLayout(config: StoredThemeConfig | null): ResolvedLayout {
     typeScale: clampTypeScale(config?.typeScale) ?? TYPE_SCALE_DEFAULT,
     avatarSize: config?.avatarSize ?? 'md',
     avatarRing: config?.avatarRing !== false,
+    sectionOrder: config?.sectionOrder ?? null,
   }
 }
 
@@ -303,6 +345,7 @@ export function toDraftConfig(
       ...(parsed.typeScale !== undefined ? { typeScale: parsed.typeScale } : {}),
       ...(parsed.avatarSize !== undefined ? { avatarSize: parsed.avatarSize } : {}),
       ...(parsed.avatarRing !== undefined ? { avatarRing: parsed.avatarRing } : {}),
+      ...(parsed.sectionOrder !== undefined ? { sectionOrder: parsed.sectionOrder } : {}),
       ...(parsed.seoTitle !== undefined ? { seoTitle: parsed.seoTitle } : {}),
       ...(parsed.seoDescription !== undefined ? { seoDescription: parsed.seoDescription } : {}),
     }

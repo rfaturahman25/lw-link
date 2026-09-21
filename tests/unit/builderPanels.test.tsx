@@ -102,7 +102,30 @@ describe('ThemePanel controls', () => {
     onChange: vi.fn(),
     headerStyle: 'classic' as const,
     onHeaderStyleChange: vi.fn(),
+    bannerUrl: null,
+    onBannerUrlChange: vi.fn(),
   }
+
+  it('offers a banner upload only for the hero / banner header styles', () => {
+    const { rerender } = render(
+      <ThemePanel {...baseProps} hasSocials onConfigureSocials={noop} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Profile/ }))
+    expect(screen.queryByText('Banner image')).not.toBeInTheDocument()
+
+    rerender(
+      <ThemePanel {...baseProps} headerStyle="hero" hasSocials onConfigureSocials={noop} />
+    )
+    expect(screen.getByText('Banner image')).toBeInTheDocument()
+    expect(screen.getByText('Upload banner')).toBeInTheDocument()
+  })
+
+  it('lists the new retro / earthy / brutalist themes', () => {
+    render(<ThemePanel {...baseProps} hasSocials onConfigureSocials={noop} />)
+    expect(screen.getByRole('button', { name: 'Neo Brutalist theme' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Earthy Vintage theme' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retro Minimal theme' })).toBeInTheDocument()
+  })
 
   it('no longer offers the duplicate "Framed avatar" header style', () => {
     render(<ThemePanel {...baseProps} hasSocials onConfigureSocials={noop} />)

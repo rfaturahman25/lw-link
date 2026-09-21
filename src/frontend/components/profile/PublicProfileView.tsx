@@ -1,4 +1,4 @@
-import { themeToCssVars } from '../../themes'
+import { UNSECTIONED_GROUP, themeToCssVars } from '../../themes'
 import type { LogoShape, ResolvedTheme, SocialStyle } from '../../themes'
 import IdentityHeader from './IdentityHeader'
 import SocialRow from './SocialRow'
@@ -83,6 +83,34 @@ export default function PublicProfileView({
   const noSectionLinks = bySection.get(null) || []
   const hasSections = sections.length > 0
   const visibleSections = sections.filter((s) => (bySection.get(s.id) || []).length > 0)
+  const showUnsectioned = noSectionLinks.length > 0
+
+  // Resolve the group order. `theme_config.sectionOrder` (edited in the builder)
+  // wins so the unsectioned block can sit anywhere; otherwise sections follow
+  // their stored position and the unsectioned block goes last.
+  type Group = { key: string; section?: ProfileViewSection }
+  const groups: Group[] = []
+  if (layout.sectionOrder) {
+    const remaining = new Map(visibleSections.map((s) => [s.id, s]))
+    for (const key of layout.sectionOrder) {
+      if (key === UNSECTIONED_GROUP) {
+        if (showUnsectioned) groups.push({ key })
+      } else {
+        const section = remaining.get(key)
+        if (section) {
+          groups.push({ key, section })
+          remaining.delete(key)
+        }
+      }
+    }
+    for (const section of remaining.values()) groups.push({ key: section.id, section })
+    if (showUnsectioned && !layout.sectionOrder.includes(UNSECTIONED_GROUP)) {
+      groups.push({ key: UNSECTIONED_GROUP })
+    }
+  } else {
+    for (const section of visibleSections) groups.push({ key: section.id, section })
+    if (showUnsectioned) groups.push({ key: UNSECTIONED_GROUP })
+  }
 
   return (
     <div
@@ -127,11 +155,18 @@ export default function PublicProfileView({
             </p>
           )}
 
-          {visibleSections.map((sec) => (
-            <div key={sec.id} className="pp-links-group">
-              <h2 className="pp-section-label">{sec.title}</h2>
+          {groups.map((group) => (
+            <div key={group.key} className="pp-links-group">
+              {group.section ? (
+                <h2 className="pp-section-label">{group.section.title}</h2>
+              ) : hasSections ? (
+                <h2 className="pp-section-label">Links</h2>
+              ) : null}
               <div className="pp-links-group">
-                {(bySection.get(sec.id) || []).map((link) => (
+                {(group.section
+                  ? bySection.get(group.section.id) || []
+                  : noSectionLinks
+                ).map((link) => (
                   <LinkCard
                     key={link.id}
                     link={link}
@@ -142,22 +177,6 @@ export default function PublicProfileView({
               </div>
             </div>
           ))}
-
-          {noSectionLinks.length > 0 && (
-            <div className="pp-links-group">
-              {hasSections && <h2 className="pp-section-label">Links</h2>}
-              <div className="pp-links-group">
-                {noSectionLinks.map((link) => (
-                  <LinkCard
-                    key={link.id}
-                    link={link}
-                    interactive={interactive}
-                    onLinkClick={onLinkClick}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {showShare && <ShareCard profileUrl={profileUrl} embedded={embedded} />}

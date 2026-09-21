@@ -326,6 +326,51 @@
     box-shadow: var(--pp-featured-shadow, var(--pp-shadow, none));
   }
 
+  /* Share block entrance: it mounts when the owner enables it, so it should
+     arrive with a little motion instead of popping in. */
+  .pp-share-in {
+    animation: ppShareIn 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes ppShareIn {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Banner (hero / banner header styles): a soft scrim keeps the overlapping
+     avatar and name readable over any photo. */
+  .pp-banner {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
+    box-shadow: var(--pp-shadow, 0 8px 24px rgba(15, 23, 42, 0.12));
+  }
+
+  .pp-banner-scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to top, rgba(2, 6, 23, 0.42) 0%, rgba(2, 6, 23, 0.06) 46%, transparent 72%),
+      radial-gradient(120% 80% at 50% 0%, rgba(2, 6, 23, 0.22) 0%, transparent 60%);
+  }
+
+  /* The avatar overlapping a banner gets a page-coloured halo so it reads as
+     cut out of the image. Radius follows the Avatar Shape token. */
+  .pp-avatar-halo {
+    display: inline-flex;
+    padding: 4px;
+    background-color: var(--pp-bg-color, #ffffff);
+    border-radius: var(--pp-avatar-radius, 9999px);
+  }
+
   .pp-featured-img {
     display: block;
     width: 100%;
@@ -431,6 +476,10 @@
       transition: none;
     }
 
+    .pp-share-in {
+      animation: none;
+    }
+
     .pp-interactive:hover,
     .pp-interactive:active,
     .pp-link:hover .pp-link-icon,
@@ -522,6 +571,23 @@
     to {
       transform: none;
       opacity: 1;
+    }
+  }
+
+  /* Save-result toast: drops in from the top with a touch of overshoot-free
+     easing, and auto-dismisses. */
+  .toast-in {
+    animation: toastIn 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes toastIn {
+    from {
+      opacity: 0;
+      transform: translateY(-16px) scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -750,6 +816,7 @@
   @media (prefers-reduced-motion: reduce) {
     .sheet-in,
     .form-reveal,
+    .toast-in,
     .modal-overlay-in,
     .modal-overlay-out,
     .modal-panel-in,

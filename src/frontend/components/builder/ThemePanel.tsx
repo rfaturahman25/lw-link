@@ -24,6 +24,7 @@ import type {
   ThemeOverrides,
 } from '../../themes'
 import { ColorField, Disclosure, Field, FontPicker, OptionCards, Segmented, Slider } from './controls'
+import ImageUploadField from './ImageUploadField'
 
 // The retired `shape` ("framed avatar") header style is intentionally absent:
 // avatar shape has a single source of truth in the Profile section below.
@@ -171,6 +172,9 @@ type Props = {
   onChange: (config: StoredThemeConfig) => void
   headerStyle: ProfileHeaderStyle
   onHeaderStyleChange: (h: ProfileHeaderStyle) => void
+  /** Hero / banner background image (uploaded, never a raw URL). */
+  bannerUrl: string | null
+  onBannerUrlChange: (url: string | null) => void
   /** Whether the profile has at least one enabled social link. */
   hasSocials: boolean
   /** Jump to the existing Social & contact editor. */
@@ -182,6 +186,8 @@ export default function ThemePanel({
   onChange,
   headerStyle,
   onHeaderStyleChange,
+  bannerUrl,
+  onBannerUrlChange,
   hasSocials,
   onConfigureSocials,
 }: Props) {
@@ -387,12 +393,26 @@ export default function ThemePanel({
         <Field label="Header style">
           <OptionCards<ProfileHeaderStyle>
             ariaLabel="Header style"
-            columns={4}
+            columns={3}
             value={headerStyle}
             onChange={onHeaderStyleChange}
             options={HEADER_STYLES}
           />
         </Field>
+        {(headerStyle === 'hero' || headerStyle === 'banner') && (
+          <Field
+            label="Banner image"
+            hint="Shown behind / above your avatar. A soft scrim keeps the text readable."
+          >
+            <ImageUploadField
+              value={bannerUrl}
+              onChange={onBannerUrlChange}
+              uploadLabel="Upload banner"
+              hint="Wide images look best (e.g. 1200×400). JPG, PNG, WebP."
+              previewClassName="h-12 w-20 rounded-md object-cover"
+            />
+          </Field>
+        )}
         <Field label="Avatar shape">
           <Segmented<AvatarShape>
             ariaLabel="Avatar shape"

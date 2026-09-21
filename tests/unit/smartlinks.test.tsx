@@ -72,6 +72,32 @@ describe('resolveSmartLink', () => {
     expect(result.type).toBe('location')
     expect(result.metadata?.source).toBe('url+redirect')
   })
+
+  it('reverse geocodes coordinates that carry no address', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        address: {
+          road: 'Jalan Melawai I',
+          village: 'Melawai',
+          city_district: 'Jakarta Selatan',
+        },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+    const result = await resolveSmartLink('https://www.google.com/maps?q=-6.5,106.7')
+    expect(result.type).toBe('location')
+    expect(result.metadata?.address).toBe('Jalan Melawai I, Melawai, Jakarta Selatan')
+    expect(result.metadata?.source).toBe('url+geocode')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the link usable when reverse geocoding fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    const result = await resolveSmartLink('https://www.google.com/maps?q=-6.5,106.7')
+    expect(result.type).toBe('location')
+    expect(result.metadata?.address).toBeUndefined()
+  })
 })
 
 describe('parseSmartMetadata', () => {
@@ -83,7 +109,7 @@ describe('parseSmartMetadata', () => {
 })
 
 describe('PublicProfileView location smart link', () => {
-  it('renders place name and address without fetching metadata on view', () => {
+  it('renders the resolved address as the subtitle without fetching on view', () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
     render(
@@ -104,13 +130,12 @@ describe('PublicProfileView location smart link', () => {
       />
     )
     expect(screen.getByText('Kantor')).toBeInTheDocument()
-    expect(screen.getByText('Studio Lensawaktu')).toBeInTheDocument()
     expect(screen.getByText('Bogor, Jawa Barat')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
     vi.unstubAllGlobals()
   })
 
-  it('shows the location block when showLocation is enabled', () => {
+  it('shows the address block when showLocation is enabled', () => {
     const meta = JSON.stringify({ placeName: 'Studio', address: 'Bogor', showLocation: true })
     render(
       <PublicProfileView
@@ -122,8 +147,52 @@ describe('PublicProfileView location smart link', () => {
         ]}
       />
     )
-    expect(screen.getByText('Studio')).toBeInTheDocument()
     expect(screen.getByText('Bogor')).toBeInTheDocument()
+  })
+
+  it('falls back to the place name when there is no address', () => {
+    render(
+      <PublicProfileView
+        displayName="Jane"
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+        links={[
+          {
+            id: '1',
+            title: 'Kantor',
+            url: PLACE_URL,
+            icon: null,
+            type: 'location',
+            metadata: JSON.stringify({ placeName: 'Studio Lensawaktu' }),
+          },
+        ]}
+      />
+    )
+    expect(screen.getByText('Studio Lensawaktu')).toBeInTheDocument()
+  })
+
+  it('never shows a meaningless "Location" placeholder', () => {
+    const { container } = render(
+      <PublicProfileView
+        displayName="Jane"
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+        links={[
+          {
+            id: '1',
+            title: 'Titik Seduh Heritage',
+            url: PLACE_URL,
+            icon: null,
+            type: 'location',
+            // Place name matches the title, and there is no address: the card
+            // must fall back to the URL instead of the word "Location".
+            metadata: JSON.stringify({ placeName: 'Titik Seduh Heritage' }),
+          },
+        ]}
+      />
+    )
+    expect(screen.queryByText('Location')).toBeNull()
+    expect(container.textContent).toContain('google.com/maps')
   })
 
   it('falls back to the URL when the location block is hidden', () => {
@@ -158,5 +227,17 @@ describe('PublicProfileView location smart link', () => {
       />
     )
     expect(screen.getByText('example.com/page')).toBeInTheDocument()
+  })
+
+  it('renders no outbound redirect icon on link cards', () => {
+    const { container } = render(
+      <PublicProfileView
+        displayName="Jane"
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+        links={[{ id: '1', title: 'Website', url: 'https://example.com/page', icon: null }]}
+      />
+    )
+    expect(container.querySelector('.lucide-external-link')).toBeNull()
   })
 })

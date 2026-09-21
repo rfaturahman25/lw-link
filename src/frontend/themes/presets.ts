@@ -237,6 +237,149 @@ export const THEMES: ProfileTheme[] = [
     shadowHover: '0 0 0 1px rgba(129,140,248,0.4), 0 14px 34px rgba(99,102,241,0.3)',
     cardBlur: '6px',
   }),
+
+  /* ---- Retro, earthy and brutalist collection --------------------------- */
+  defineTheme({
+    id: 'retro-minimal',
+    name: 'Retro Minimal',
+    category: 'retro',
+    // Warm paper, ink text, hard offset shadows and one retro orange accent.
+    background: { color: '#f2efe6' },
+    colors: { text: '#1f1c18', textSecondary: '#6b6459', card: '#ffffff', cardOpacity: 1, button: '#1f1c18', buttonText: '#f7f4ec', accent: '#d4622f', socialIcon: '#3f3a33' },
+    fontFamily: 'dm-sans',
+    shape: 'square',
+    hover: 'lift',
+    border: 'rgba(31,28,24,0.20)',
+    shadow: '2px 2px 0 rgba(31,28,24,0.14)',
+    shadowHover: '4px 4px 0 rgba(31,28,24,0.20)',
+    cardRadius: '0.5rem',
+  }),
+  defineTheme({
+    id: 'earthy-vintage',
+    name: 'Earthy Vintage',
+    category: 'earthy',
+    // Aged cream paper, sepia ink and a serif face for a printed-poster feel.
+    background: { color: '#e8dfcd' },
+    colors: { text: '#3b3226', textSecondary: '#7a6a55', card: '#f6f0e3', cardOpacity: 1, button: '#6b4f36', buttonText: '#f7f1e6', accent: '#a9754a', socialIcon: '#6b4f36' },
+    fontFamily: 'playfair-display',
+    shape: 'rounded',
+    hover: 'lift',
+    border: 'rgba(107,79,54,0.24)',
+    shadow: '0 4px 14px rgba(59,50,38,0.12)',
+    shadowHover: '0 10px 24px rgba(59,50,38,0.18)',
+    cardRadius: '0.75rem',
+  }),
+  defineTheme({
+    id: 'terra',
+    name: 'Terra',
+    category: 'earthy',
+    // Clay, moss and warm sand.
+    background: { color: '#f0e7db' },
+    colors: { text: '#2f2a24', textSecondary: '#6f6558', card: '#ffffff', cardOpacity: 0.9, button: '#3f5d4b', buttonText: '#f2f7f3', accent: '#c1653f', socialIcon: '#4a6b57' },
+    fontFamily: 'figtree',
+    shape: 'rounded',
+    hover: 'lift',
+    border: 'rgba(63,93,75,0.20)',
+    shadow: '0 6px 18px rgba(47,42,36,0.12)',
+    shadowHover: '0 12px 28px rgba(47,42,36,0.18)',
+    cardRadius: '1rem',
+  }),
+  defineTheme({
+    id: 'sage',
+    name: 'Sage',
+    category: 'earthy',
+    // Soft herbal green on off-white — calm and modern.
+    background: { color: '#eef2ea' },
+    colors: { text: '#26302a', textSecondary: '#5f6f64', card: '#ffffff', cardOpacity: 0.9, button: '#4a6b57', buttonText: '#f4f8f5', accent: '#7fa98c', socialIcon: '#4a6b57' },
+    fontFamily: 'urbanist',
+    shape: 'rounded',
+    hover: 'lift',
+    border: 'rgba(74,107,87,0.20)',
+    shadow: '0 6px 18px rgba(38,48,42,0.10)',
+    shadowHover: '0 12px 28px rgba(38,48,42,0.16)',
+    cardRadius: '1rem',
+  }),
+  defineTheme({
+    id: 'cocoa',
+    name: 'Cocoa',
+    category: 'earthy',
+    // Espresso and caramel on warm milk.
+    background: { color: '#f3ebe4' },
+    colors: { text: '#3a2c25', textSecondary: '#7d6a5f', card: '#fffaf6', cardOpacity: 1, button: '#7b4b34', buttonText: '#fdf7f2', accent: '#c08552', socialIcon: '#7b4b34' },
+    fontFamily: 'outfit',
+    shape: 'pill',
+    hover: 'lift',
+    border: 'rgba(123,75,52,0.20)',
+    shadow: '0 6px 18px rgba(58,44,37,0.12)',
+    shadowHover: '0 12px 28px rgba(58,44,37,0.18)',
+    cardRadius: '1.25rem',
+  }),
+  defineTheme({
+    id: 'matcha',
+    name: 'Matcha',
+    category: 'vibrant',
+    // Trendy matcha green with a soft oat base.
+    background: { color: '#f3f6e9' },
+    colors: { text: '#2b3320', textSecondary: '#6a7550', card: '#ffffff', cardOpacity: 0.9, button: '#5f7a2e', buttonText: '#f6f9ee', accent: '#8fb339', socialIcon: '#5f7a2e' },
+    fontFamily: 'lexend',
+    shape: 'pill',
+    hover: 'lift',
+    border: 'rgba(95,122,46,0.20)',
+    shadow: '0 6px 18px rgba(43,51,32,0.12)',
+    shadowHover: '0 12px 28px rgba(43,51,32,0.18)',
+    cardRadius: '1.25rem',
+  }),
+  defineTheme({
+    id: 'lilac-haze',
+    name: 'Lilac Haze',
+    category: 'vibrant',
+    // Soft lavender haze — the current pastel favourite.
+    background: {
+      color: '#f4f1fb',
+      image:
+        'radial-gradient(at 15% 12%, rgba(167,139,250,0.28) 0%, transparent 55%), radial-gradient(at 85% 20%, rgba(244,114,182,0.22) 0%, transparent 55%)',
+      size: 'cover',
+    },
+    colors: { text: '#2b2440', textSecondary: '#6f6690', card: '#ffffff', cardOpacity: 0.85, button: '#6d5bd0', buttonText: '#f7f5ff', accent: '#a78bfa', socialIcon: '#6d5bd0' },
+    fontFamily: 'plus-jakarta-sans',
+    shape: 'pill',
+    hover: 'lift',
+    border: 'rgba(109,91,208,0.18)',
+    shadow: '0 8px 22px rgba(43,36,64,0.12)',
+    shadowHover: '0 14px 32px rgba(109,91,208,0.22)',
+    cardBlur: '8px',
+    cardRadius: '1.25rem',
+  }),
+  defineTheme({
+    id: 'coral-pop',
+    name: 'Coral Pop',
+    category: 'vibrant',
+    // Peach base with a punchy coral accent.
+    background: { color: '#fff1ec' },
+    colors: { text: '#3a201a', textSecondary: '#8a6157', card: '#ffffff', cardOpacity: 0.9, button: '#e2563c', buttonText: '#fff7f4', accent: '#ff7a59', socialIcon: '#c2410c' },
+    fontFamily: 'figtree',
+    shape: 'pill',
+    hover: 'glow',
+    border: 'rgba(226,86,60,0.20)',
+    shadow: '0 6px 18px rgba(58,32,26,0.12)',
+    shadowHover: '0 0 0 1px rgba(255,122,89,0.35), 0 14px 32px rgba(226,86,60,0.28)',
+    cardRadius: '1.25rem',
+  }),
+  defineTheme({
+    id: 'neo-brutalist',
+    name: 'Neo Brutalist',
+    category: 'brutalist',
+    // Flat paper, heavy black outlines, hard offset shadows, zero radius.
+    background: { color: '#faf5e6' },
+    colors: { text: '#0f0f0f', textSecondary: '#4b4b4b', card: '#ffffff', cardOpacity: 1, button: '#111111', buttonText: '#ffffff', accent: '#ff4d00', socialIcon: '#111111' },
+    fontFamily: 'space-grotesk',
+    shape: 'square',
+    hover: 'lift',
+    border: 'rgba(15,15,15,0.85)',
+    shadow: '4px 4px 0 rgba(15,15,15,0.85)',
+    shadowHover: '7px 7px 0 rgba(15,15,15,0.9)',
+    cardRadius: '0px',
+  }),
 ]
 
 export const DEFAULT_THEME_ID = 'mesh'
@@ -244,9 +387,12 @@ export const DEFAULT_THEME_ID = 'mesh'
 // Presentation order + labels for the admin theme picker.
 export const THEME_CATEGORIES: { id: ThemeCategory; label: string }[] = [
   { id: 'minimal', label: 'Minimal' },
+  { id: 'retro', label: 'Retro' },
+  { id: 'earthy', label: 'Earthy' },
+  { id: 'brutalist', label: 'Brutal' },
+  { id: 'vibrant', label: 'Vibrant' },
   { id: 'artistic', label: 'Artistic' },
   { id: 'dark', label: 'Dark' },
-  { id: 'vibrant', label: 'Vibrant' },
 ]
 
 // Legacy color_palette values no longer exist as themes; map each to a surviving preset.

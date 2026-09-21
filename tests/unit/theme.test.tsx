@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import PublicProfileView from '@frontend/components/profile/PublicProfileView'
 import {
+  FONT_OPTIONS,
   THEMES,
   THEME_MAP,
   parseStoredThemeConfig,
@@ -30,6 +31,37 @@ describe('theme presets', () => {
     expect(THEMES.length).toBeGreaterThanOrEqual(8)
     expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length)
     expect(THEMES.some((t) => t.isDark)).toBe(true)
+  })
+
+  it('includes the retro, earthy and brutalist collections', () => {
+    for (const category of ['retro', 'earthy', 'brutalist'] as const) {
+      expect(THEMES.some((t) => t.category === category)).toBe(true)
+    }
+    const brutal = THEMES.find((t) => t.id === 'neo-brutalist')
+    expect(brutal?.button.shape).toBe('square')
+    expect(brutal?.effects.cardRadius).toBe('0px')
+    expect(brutal?.effects.shadow).toContain('rgba(15,15,15')
+  })
+
+  it('retires the Press Start 2P font without breaking saved configs', () => {
+    expect(FONT_OPTIONS.some((f) => f.value === 'press-start-2p')).toBe(false)
+    // A config still holding the removed font drops it and keeps the preset font.
+    const parsed = parseStoredThemeConfig(
+      JSON.stringify({ themeId: 'mesh', overrides: { fontFamily: 'press-start-2p' } })
+    )
+    expect(parsed?.overrides?.fontFamily).toBeUndefined()
+    expect(resolveTheme(parsed).typography.fontFamily).toBe('plus-jakarta-sans')
+  })
+
+  it('drops malformed overrides instead of trusting them', () => {
+    const parsed = parseStoredThemeConfig(
+      JSON.stringify({
+        themeId: 'mesh',
+        overrides: { accentColor: 'not-a-colour', cardColor: '#00ff00' },
+      })
+    )
+    expect(parsed?.overrides?.accentColor).toBeUndefined()
+    expect(parsed?.overrides?.cardColor).toBe('#00ff00')
   })
 })
 
@@ -164,6 +196,7 @@ describe('theme layout options', () => {
       typeScale: 1,
       avatarSize: 'md',
       avatarRing: true,
+      sectionOrder: null,
     })
   })
 
@@ -249,6 +282,23 @@ describe('visual builder theme options', () => {
     expect(draft.seoTitle).toBe('Hello')
     expect(draft.seoDescription).toBe('World')
   })
+
+  it('round-trips the public page group order', () => {
+    const draft = toDraftConfig({
+      themeConfig: JSON.stringify({
+        themeId: 'mesh',
+        sectionOrder: ['__none__', 'sec-1'],
+      }),
+    })
+    expect(draft.sectionOrder).toEqual(['__none__', 'sec-1'])
+    expect(resolveTheme(draft).layout.sectionOrder).toEqual(['__none__', 'sec-1'])
+    // Junk entries are discarded rather than rendered.
+    expect(
+      parseStoredThemeConfig(
+        JSON.stringify({ themeId: 'mesh', sectionOrder: ['ok', 42, ''] })
+      )?.sectionOrder
+    ).toEqual(['ok'])
+  })
 })
 
 describe('PublicProfileView', () => {
@@ -308,8 +358,7 @@ describe('PublicProfileView', () => {
     ).toBeInTheDocument()
   })
 
-  it('fills the embedded builder preview so the background never stops early', () => {
-    const { container } = render(
+  it('fills the embedded builder preview so the background never stops early', () => {    const { container } = render(
       <PublicProfileView
         variant="embedded"
         displayName="Jane Doe"
@@ -320,6 +369,40 @@ describe('PublicProfileView', () => {
     )
     const root = container.querySelector('.pp-root')
     expect(root?.className).toContain('min-h-full')
+  })
+
+  it('honours the stored group order for the unsectioned block', () => {
+    const links = [
+      { id: 'n', title: 'Unsorted', url: 'https://example.com/n', icon: null, sectionId: null },
+      { id: 's', title: 'In Section', url: 'https://example.com/s', icon: null, sectionId: 'sec-1' },
+    ]
+    const sections = [{ id: 'sec-1', title: 'Favourites' }]
+
+    const ordered = render(
+      <PublicProfileView
+        displayName="Jane"
+        links={links}
+        sections={sections}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh', sectionOrder: ['__none__', 'sec-1'] })}
+      />
+    )
+    const orderedText = ordered.container.textContent ?? ''
+    expect(orderedText.indexOf('Unsorted')).toBeLessThan(orderedText.indexOf('In Section'))
+    ordered.unmount()
+
+    // Without an explicit order the unsectioned block stays last.
+    const fallback = render(
+      <PublicProfileView
+        displayName="Jane"
+        links={links}
+        sections={sections}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+      />
+    )
+    const fallbackText = fallback.container.textContent ?? ''
+    expect(fallbackText.indexOf('In Section')).toBeLessThan(fallbackText.indexOf('Unsorted'))
   })
 })
 

@@ -24,7 +24,6 @@ export type ProfileFont =
   | 'jetbrains-mono'
   | 'space-mono'
   | 'silkscreen'
-  | 'press-start-2p'
   | 'vt323'
 export type SocialPlatform = 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'twitter' | 'facebook' | 'linkedin' | 'github' | 'website' | 'email' | 'phone' | 'whatsapp'
 

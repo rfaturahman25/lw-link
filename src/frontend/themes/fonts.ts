@@ -26,7 +26,6 @@ export const FONT_OPTIONS: FontOption[] = [
   { value: 'jetbrains-mono', label: 'JetBrains Mono', google: 'JetBrains+Mono', stack: "'JetBrains Mono', ui-monospace, monospace", weights: '400;500;600;700' },
   { value: 'space-mono', label: 'Space Mono', google: 'Space+Mono', stack: "'Space Mono', ui-monospace, monospace", weights: '400;700' },
   { value: 'silkscreen', label: 'Silkscreen (pixel)', google: 'Silkscreen', stack: "'Silkscreen', ui-monospace, monospace", weights: '400;700' },
-  { value: 'press-start-2p', label: 'Press Start 2P (pixel)', google: 'Press+Start+2P', stack: "'Press Start 2P', ui-monospace, monospace", weights: '400' },
   { value: 'vt323', label: 'VT323 (pixel)', google: 'VT323', stack: "'VT323', ui-monospace, monospace", weights: '400' },
 ]
 

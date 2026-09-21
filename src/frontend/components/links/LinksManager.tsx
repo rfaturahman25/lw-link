@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useDashboardContext } from '../../pages/dashboard/DashboardLayout'
 import { api } from '../../services/api'
+import { UNSECTIONED_GROUP } from '../../themes'
 import { isMapsUrl, parseSmartMetadata } from '../profile/smartLink'
 import {
   DndContext,
+  DragOverlay,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -191,11 +193,13 @@ function SortableSection({
   children,
   onEdit,
   onDelete,
+  isOver,
 }: {
   section: { id: string; title: string }
   children: React.ReactNode
   onEdit: (id: string, title: string) => void
   onDelete: (id: string) => void
+  isOver?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
@@ -218,7 +222,13 @@ function SortableSection({
     <div
       ref={setNodeRef}
       style={style}
-      className={`card p-4 space-y-3 ${isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''}`}
+      className={`card p-4 space-y-3 transition-shadow ${
+        isDragging
+          ? 'shadow-lg ring-2 ring-primary/20'
+          : isOver
+            ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background'
+            : ''
+      }`}
     >
       <div className="flex items-center gap-2">
         <button
@@ -275,16 +285,94 @@ function SortableSection({
   )
 }
 
+// The unsectioned links group is a first-class, sortable container so it can sit
+// anywhere among the sections — not just at the bottom.
+function SortableUnsectioned({
+  count,
+  canReorder,
+  isOver,
+  title,
+  children,
+}: {
+  count: number
+  canReorder: boolean
+  isOver?: boolean
+  title: string
+  children: React.ReactNode
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: UNSECTIONED_GROUP,
+    data: { type: 'section' },
+  })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`card p-4 space-y-3 transition-shadow ${
+        isDragging
+          ? 'shadow-lg ring-2 ring-primary/20'
+          : isOver
+            ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background'
+            : ''
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {canReorder ? (
+          <button
+            {...attributes}
+            {...listeners}
+            className="inline-flex h-10 w-10 shrink-0 touch-none cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing"
+            aria-label="Drag to reorder this group"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        ) : (
+          <span
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground"
+            aria-hidden="true"
+          >
+            <LinkIcon className="h-4 w-4" />
+          </span>
+        )}
+        <div
+          {...(canReorder ? listeners : {})}
+          className={`flex min-w-0 flex-1 items-center gap-2 touch-pan-y ${
+            canReorder ? 'select-none' : ''
+          }`}
+        >
+          <h3 className="truncate font-semibold">{title}</h3>
+          <span className="text-xs font-normal text-muted-foreground">({count})</span>
+        </div>
+      </div>
+      <Droppable id={`container:${UNSECTIONED_GROUP}`} sectionId={null}>
+        {children}
+      </Droppable>
+    </div>
+  )
+}
+
 export default function LinksManager({
   embedded = false,
   featuredLinkId = null,
   onSetFeatured,
+  sectionOrder = null,
+  onSectionOrderChange,
 }: {
   embedded?: boolean
   /** The link currently promoted to the featured tile, if any. */
   featuredLinkId?: string | null
   /** Promote/demote a link (pass null to clear). Owned by the builder draft. */
   onSetFeatured?: (id: string | null) => void
+  /** Explicit group order (section ids + `UNSECTIONED_GROUP`), or null for default. */
+  sectionOrder?: string[] | null
+  /** Persist a new group order. Owned by the builder draft. */
+  onSectionOrderChange?: (order: string[]) => void
 }) {
   const { links, sections, reload, setLinks, setSections } = useDashboardContext() as unknown as {
     links: Array<{
@@ -316,6 +404,9 @@ export default function LinksManager({
   const [linkErrors, setLinkErrors] = useState<LinkFormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
+  // Live drag state, used for the drop-target highlight and the drag overlay.
+  const [activeDrag, setActiveDrag] = useState<{ type: 'link' | 'section'; id: string } | null>(null)
+  const [overGroup, setOverGroup] = useState<string | null>(null)
 
   // Mouse drags start after a small movement; touch drags require a short
   // long-press so a finger swipe still scrolls the list. Both drag surfaces also
@@ -464,7 +555,21 @@ export default function LinksManager({
     return ids
   }
 
+  // Ordered group keys: sections plus the unsectioned block. An explicit
+  // `sectionOrder` (from the builder draft) wins; otherwise sections keep their
+  // position order and the unsectioned block is last.
+  const containerKeys = useMemo(() => {
+    const sectionIds = [...sections].sort((a, b) => a.position - b.position).map((s) => s.id)
+    const base = sectionOrder && sectionOrder.length > 0 ? sectionOrder : sectionIds
+    const keys = base.filter((k) => k === UNSECTIONED_GROUP || sectionIds.includes(k))
+    for (const id of sectionIds) if (!keys.includes(id)) keys.push(id)
+    if (!keys.includes(UNSECTIONED_GROUP)) keys.push(UNSECTIONED_GROUP)
+    return keys
+  }, [sections, sectionOrder])
+
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveDrag(null)
+    setOverGroup(null)
     const { active, over } = event
     if (!over) return
     const activeData = active.data.current as
@@ -474,23 +579,27 @@ export default function LinksManager({
       | { type?: string; sectionId?: string | null }
       | undefined
 
-    // --- Section reorder ---
+    // --- Group (section or the unsectioned block) reorder ---
     if (activeData?.type === 'section') {
       if (String(active.id) === String(over.id)) return
-      // Only sections are valid targets for a section drag (see collision detection).
-      const targetId = overData?.type === 'section' ? String(over.id) : null
-      if (!targetId || targetId === String(active.id)) return
-      const ordered = [...sections].sort((a, b) => a.position - b.position)
-      const oldIndex = ordered.findIndex((s) => s.id === active.id)
-      const newIndex = ordered.findIndex((s) => s.id === targetId)
+      // Only groups are valid targets for a group drag (see collision detection).
+      const targetKey = overData?.type === 'section' ? String(over.id) : null
+      if (!targetKey || targetKey === String(active.id)) return
+      const oldIndex = containerKeys.indexOf(String(active.id))
+      const newIndex = containerKeys.indexOf(targetKey)
       if (oldIndex === -1 || newIndex === -1) return
-      const newOrder = arrayMove(ordered, oldIndex, newIndex)
-      // Keep positions in sync with the new visual order so later link-order
-      // calculations (which sort by position) stay correct without a reload.
-      const reordered = newOrder.map((s, i) => ({ ...s, position: i + 1 }))
+      const nextKeys = arrayMove(containerKeys, oldIndex, newIndex)
+      onSectionOrderChange?.(nextKeys)
+      // Keep section positions in sync with the new visual order so later
+      // link-order calculations (which sort by position) stay correct.
+      const sectionIds = nextKeys.filter((k) => k !== UNSECTIONED_GROUP)
+      const posById = new Map(sectionIds.map((id, i) => [id, i + 1]))
+      const reordered = [...sections]
+        .sort((a, b) => a.position - b.position)
+        .map((s) => ({ ...s, position: posById.get(s.id) ?? s.position }))
       setSections(reordered)
       try {
-        await api.sectionReorder(reordered.map((s) => s.id))
+        await api.sectionReorder(sectionIds)
       } catch {
         await reload()
       }
@@ -653,12 +762,88 @@ export default function LinksManager({
         deleting.
       </p>
 
-      <DndContext sensors={sensors} collisionDetection={linksCollisionDetection} onDragEnd={handleDragEnd}>
-      {/* Sections */}
-      {hasSections && (
-        <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={linksCollisionDetection}
+        onDragStart={({ active }) =>
+          setActiveDrag({
+            type: (active.data.current as { type?: string } | undefined)?.type === 'section'
+              ? 'section'
+              : 'link',
+            id: String(active.id),
+          })
+        }
+        onDragOver={({ over }) => {
+          const data = over?.data.current as
+            | { type?: string; sectionId?: string | null }
+            | undefined
+          if (!over || !data) {
+            setOverGroup(null)
+            return
+          }
+          if (data.type === 'section') setOverGroup(String(over.id))
+          else if (data.type === 'link' || data.type === 'container') {
+            setOverGroup(data.sectionId ?? UNSECTIONED_GROUP)
+          } else {
+            setOverGroup(null)
+          }
+        }}
+        onDragCancel={() => {
+          setActiveDrag(null)
+          setOverGroup(null)
+        }}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={containerKeys} strategy={verticalListSortingStrategy}>
           <div className="space-y-4">
-            {sections.map((sec) => {
+            {containerKeys.map((key) => {
+              const activeKey = activeDrag?.type === 'section' ? activeDrag.id : null
+              const isOver = overGroup === key && activeKey !== key
+
+              if (key === UNSECTIONED_GROUP) {
+                return (
+                  <SortableUnsectioned
+                    key={key}
+                    count={noSectionLinks.length}
+                    canReorder={hasSections && !!onSectionOrderChange}
+                    isOver={isOver}
+                    title={hasSections ? 'No Section' : 'Your Links'}
+                  >
+                    <SortableContext
+                      items={noSectionLinks.map((l) => l.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {noSectionLinks.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-3">
+                          {hasSections
+                            ? 'No unsectioned links. Drag a link here to remove it from a section.'
+                            : 'No links yet. Add your first link above.'}
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {noSectionLinks.map((l) => (
+                            <SortableLinkItem
+                              key={l.id}
+                              link={l as never}
+                              onEdit={() => openEditLink(l as LinkFormLink)}
+                              onToggle={() => toggleLink(l.id)}
+                              onDelete={() => deleteLink(l.id)}
+                              showFeatured={!!l.thumbnail && !!onSetFeatured}
+                              featured={featuredLinkId === l.id}
+                              onToggleFeatured={() =>
+                                onSetFeatured?.(featuredLinkId === l.id ? null : l.id)
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </SortableContext>
+                  </SortableUnsectioned>
+                )
+              }
+
+              const sec = sections.find((s) => s.id === key)
+              if (!sec) return null
               const secLinks = links
                 .filter((l) => l.sectionId === sec.id)
                 .sort((a, b) => a.position - b.position)
@@ -668,6 +853,7 @@ export default function LinksManager({
                   section={sec}
                   onEdit={handleEditSection}
                   onDelete={handleDeleteSection}
+                  isOver={isOver}
                 >
                   <Droppable id={`container:${sec.id}`} sectionId={sec.id}>
                     <SortableContext
@@ -711,46 +897,28 @@ export default function LinksManager({
             })}
           </div>
         </SortableContext>
-      )}
 
-      {/* No Section links */}
-      <div className="space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <LinkIcon className="h-4 w-4" /> {hasSections ? 'No Section' : 'Your Links'}{' '}
-          <span className="text-xs font-normal text-muted-foreground">
-            ({noSectionLinks.length})
-          </span>
-        </h3>
-        <Droppable id="container:__none__" sectionId={null}>
-          <SortableContext
-            items={noSectionLinks.map((l) => l.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {noSectionLinks.length === 0 ? (
-              <p className="text-sm text-muted-foreground card p-4 text-center">
-                {hasSections
-                  ? 'No unsectioned links. Drag a link here to remove it from a section.'
-                  : 'No links yet. Add your first link above.'}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {noSectionLinks.map((l) => (
-                  <SortableLinkItem
-                    key={l.id}
-                    link={l as never}
-                    onEdit={() => openEditLink(l as LinkFormLink)}
-                    onToggle={() => toggleLink(l.id)}
-                    onDelete={() => deleteLink(l.id)}
-                    showFeatured={!!l.thumbnail && !!onSetFeatured}
-                    featured={featuredLinkId === l.id}
-                    onToggleFeatured={() => onSetFeatured?.(featuredLinkId === l.id ? null : l.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </SortableContext>
-        </Droppable>
-      </div>
+        {/* A floating clone follows the pointer so dragging feels direct instead
+            of snapping between drop targets. */}
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.22,1,0.36,1)' }}>
+          {activeDrag ? (
+            <div className="card rotate-1 p-3 shadow-2xl ring-2 ring-primary/40">
+              {activeDrag.type === 'section' ? (
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  {activeDrag.id === UNSECTIONED_GROUP
+                    ? 'No Section'
+                    : sections.find((s) => s.id === activeDrag.id)?.title || 'Section'}
+                </p>
+              ) : (
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  {links.find((l) => l.id === activeDrag.id)?.title || 'Link'}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
       </div>
 

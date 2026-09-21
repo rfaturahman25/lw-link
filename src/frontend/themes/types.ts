@@ -15,7 +15,6 @@ export type ProfileFont =
   | 'jetbrains-mono'
   | 'space-mono'
   | 'silkscreen'
-  | 'press-start-2p'
   | 'vt323'
 
 export type ThemeButtonShape = 'square' | 'rounded' | 'pill' | 'outlined' | 'elevated'
@@ -23,7 +22,7 @@ export type ThemeButtonShape = 'square' | 'rounded' | 'pill' | 'outlined' | 'ele
 export type ThemeHoverEffect = 'lift' | 'glow' | 'scale' | 'none'
 
 // Presentation grouping used by the admin theme picker.
-export type ThemeCategory = 'minimal' | 'artistic' | 'dark' | 'vibrant'
+export type ThemeCategory = 'minimal' | 'artistic' | 'dark' | 'vibrant' | 'retro' | 'earthy' | 'brutalist'
 
 export type ThemeBackground = {
   color: string
@@ -110,6 +109,12 @@ export type LayoutOptions = {
   typeScale?: number
   avatarSize?: AvatarSize
   avatarRing?: boolean
+  // Order of the public page's content groups: section ids plus the
+  // `UNSECTIONED_GROUP` sentinel, so the "No Section" block can be placed
+  // anywhere among the sections (not only at the bottom). Optional and additive
+  // — older configs keep rendering sections in `position` order with the
+  // unsectioned block last.
+  sectionOrder?: string[]
 }
 
 // Optional SEO overrides. Stored inside theme_config so no schema change is needed.
@@ -140,6 +145,8 @@ export type ResolvedLayout = {
   typeScale: number
   avatarSize: AvatarSize
   avatarRing: boolean
+  /** Explicit group order, or null to fall back to section position order. */
+  sectionOrder: string[] | null
 }
 
 // Resolved SEO values. Both may be empty strings when the owner has not set them;

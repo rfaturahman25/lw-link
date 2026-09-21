@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Upload } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import type { ProfileDraft } from '../../hooks/useProfileDraft'
@@ -7,6 +7,7 @@ import type { StoredThemeConfig } from '../../themes'
 import SocialsEditor from '../profile/SocialsEditor'
 import type { SocialDraft } from '../profile/socialMeta'
 import { Disclosure, Field } from './controls'
+import ImageUploadField from './ImageUploadField'
 import type { BuilderLink } from './types'
 
 type Props = {
@@ -105,8 +106,6 @@ export default function ContentPanel({
   onManageLinks,
   openSocial = false,
 }: Props) {
-  const [uploading, setUploading] = useState<'logoUrl' | 'bannerUrl' | null>(null)
-  const [uploadError, setUploadError] = useState('')
   const featuredCandidates = links.filter((l) => l.enabled && l.thumbnail)
 
   const togglePublished = () => {
@@ -119,25 +118,6 @@ export default function ContentPanel({
       return
     }
     patch({ published: !draft.published })
-  }
-
-  const upload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    field: 'logoUrl' | 'bannerUrl'
-  ) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadError('')
-    setUploading(field)
-    try {
-      const res = (await api.uploadImage(file)) as { data?: { url?: string } }
-      if (res.data?.url) patch({ [field]: res.data.url } as Partial<ProfileDraft>)
-    } catch (err: unknown) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploading(null)
-      e.target.value = ''
-    }
   }
 
   return (
@@ -208,108 +188,42 @@ export default function ContentPanel({
           />
         </Field>
         <Field label="Profile image" hint="Upload a JPG, PNG or WebP. Used as the profile picture.">
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <label
-                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-xs ${
-                  uploading === 'logoUrl' ? 'opacity-50' : 'hover:bg-accent'
-                }`}
-              >
-                <Upload className="h-3.5 w-3.5" />
-                {uploading === 'logoUrl'
-                  ? 'Uploading…'
-                  : draft.logoUrl
-                    ? 'Replace image'
-                    : 'Upload image'}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="hidden"
-                  disabled={uploading !== null}
-                  onChange={(e) => upload(e, 'logoUrl')}
-                />
-              </label>
-              {draft.logoUrl && (
+          <ImageUploadField
+            value={draft.logoUrl}
+            onChange={(url) => patch({ logoUrl: url })}
+            uploadLabel="Upload image"
+            hint="Supported formats: JPG, PNG, WebP."
+            previewClassName="h-10 w-10 object-contain"
+          >
+            <p className="text-[11px] font-medium">Logo shape</p>
+            <div className="mt-1 flex gap-1.5">
+              {(['circle', 'plain'] as const).map((s) => (
                 <button
+                  key={s}
                   type="button"
-                  onClick={() => patch({ logoUrl: null })}
-                  className="rounded-lg border px-3 py-2 text-xs text-red-600 hover:bg-accent"
+                  onClick={() => setThemeConfig({ logoShape: s })}
+                  aria-pressed={(draft.themeConfig.logoShape ?? 'circle') === s}
+                  className={`rounded-md border px-2 py-1 text-[10px] ${
+                    (draft.themeConfig.logoShape ?? 'circle') === s
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'hover:bg-accent'
+                  }`}
                 >
-                  Remove
+                  {s === 'plain' ? 'Plain (PNG)' : 'Circle'}
                 </button>
-              )}
+              ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">Supported formats: JPG, PNG, WebP.</p>
-            {draft.logoUrl && (
-              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-2">
-                <img src={draft.logoUrl} alt="Profile image preview" className="h-10 w-10 object-contain" />
-                <div className="flex-1">
-                  <p className="text-[11px] font-medium">Logo shape</p>
-                  <div className="mt-1 flex gap-1.5">
-                    {(['circle', 'plain'] as const).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setThemeConfig({ logoShape: s })}
-                        aria-pressed={(draft.themeConfig.logoShape ?? 'circle') === s}
-                        className={`rounded-md border px-2 py-1 text-[10px] ${
-                          (draft.themeConfig.logoShape ?? 'circle') === s
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'hover:bg-accent'
-                        }`}
-                      >
-                        {s === 'plain' ? 'Plain (PNG)' : 'Circle'}
-                      </button>
-                    ))}
-                  </div>
-                  {(draft.themeConfig.logoShape ?? 'circle') === 'plain' && (
-                    <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                      Plain renders the logo without a container and ignores the Avatar shape.
-                    </p>
-                  )}
-                </div>
-              </div>
+            {(draft.themeConfig.logoShape ?? 'circle') === 'plain' && (
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                Plain renders the logo without a container and ignores the Avatar shape.
+              </p>
             )}
-          </div>
+          </ImageUploadField>
         </Field>
 
-        {(draft.headerStyle === 'hero' || draft.headerStyle === 'banner') && (
-          <Field label="Banner image">
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={draft.bannerUrl ?? ''}
-                onChange={(e) => patch({ bannerUrl: e.target.value || null })}
-                placeholder="https://... or upload"
-                className="input h-9 min-w-[140px] flex-1"
-              />
-              <label
-                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-xs ${
-                  uploading === 'bannerUrl' ? 'opacity-50' : 'hover:bg-accent'
-                }`}
-              >
-                <Upload className="h-3.5 w-3.5" />
-                {uploading === 'bannerUrl' ? 'Uploading…' : 'Upload'}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="hidden"
-                  disabled={uploading !== null}
-                  onChange={(e) => upload(e, 'bannerUrl')}
-                />
-              </label>
-              {draft.bannerUrl && (
-                <button
-                  type="button"
-                  onClick={() => patch({ bannerUrl: null })}
-                  className="rounded-lg border px-3 text-xs text-red-600 hover:bg-accent"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </Field>
-        )}
-        {uploadError && <p className="text-[11px] text-red-600">{uploadError}</p>}
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          The hero / banner image is uploaded from the Theme tab, next to Header style.
+        </p>
 
         <UsernameField />
       </Disclosure>

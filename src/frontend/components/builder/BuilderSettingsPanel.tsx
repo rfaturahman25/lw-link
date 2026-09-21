@@ -117,6 +117,8 @@ export default function BuilderSettingsPanel({
               onChange={onConfigChange}
               headerStyle={headerStyle}
               onHeaderStyleChange={onHeaderStyleChange}
+              bannerUrl={draft.bannerUrl}
+              onBannerUrlChange={(url) => patch({ bannerUrl: url })}
               hasSocials={hasSocials}
               onConfigureSocials={onConfigureSocials}
             />

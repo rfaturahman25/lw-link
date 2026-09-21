@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Monitor, Smartphone } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle2, Monitor, Smartphone } from 'lucide-react'
 import { useProfileDraft } from '../../hooks/useProfileDraft'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { loadFont } from '../../themes'
@@ -45,6 +45,7 @@ export default function VisualBuilder({
     dirty,
     saving,
     saveMsg,
+    setSaveMsg,
     save,
     reset,
   } = useProfileDraft({ profile, user, socials, reload })
@@ -110,6 +111,17 @@ export default function VisualBuilder({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [panelOpen, isDesktop])
+
+  // The save result is shown as a toast and clears itself, so a success message
+  // never lingers or hides in a corner.
+  useEffect(() => {
+    if (!saveMsg) return
+    const timer = window.setTimeout(
+      () => setSaveMsg(null),
+      saveMsg.type === 'error' ? 5000 : 2600
+    )
+    return () => window.clearTimeout(timer)
+  }, [saveMsg, setSaveMsg])
 
   const profileUrl = user?.username ? `${window.location.origin}/@${user.username}` : ''
 
@@ -177,17 +189,6 @@ export default function VisualBuilder({
               </button>
             ))}
           </div>
-          {saveMsg && (
-            <span
-              className={`hidden max-w-[200px] truncate text-xs sm:inline ${
-                saveMsg.type === 'error' ? 'text-red-600' : 'text-green-600'
-              }`}
-              role="status"
-              aria-live="polite"
-            >
-              {saveMsg.text}
-            </span>
-          )}
           <span
             className={`hidden rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline ${
               form.published ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
@@ -234,6 +235,29 @@ export default function VisualBuilder({
         </div>
       </header>
 
+      {/* Save feedback: a centred, animated toast so the result is impossible to
+          miss on any screen size (the old inline text was clipped off-canvas). */}
+      {saveMsg && (
+        <div className="pointer-events-none absolute inset-x-0 top-[4.5rem] z-[80] flex justify-center px-4">
+          <div
+            role="status"
+            aria-live="polite"
+            className={`toast-in pointer-events-auto flex max-w-full items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium shadow-lg ${
+              saveMsg.type === 'error'
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : 'border-green-200 bg-green-50 text-green-700'
+            }`}
+          >
+            {saveMsg.type === 'error' ? (
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            )}
+            <span className="truncate">{saveMsg.text}</span>
+          </div>
+        </div>
+      )}
+
       <div className="relative flex min-h-0 flex-1">
         <div
           className={`min-w-0 flex-1 transition-[padding] duration-200 ${
@@ -269,6 +293,12 @@ export default function VisualBuilder({
                     onSetFeatured={(id) =>
                       patch({
                         themeConfig: { ...form.themeConfig, featuredLinkId: id },
+                      })
+                    }
+                    sectionOrder={form.themeConfig.sectionOrder ?? null}
+                    onSectionOrderChange={(order) =>
+                      patch({
+                        themeConfig: { ...form.themeConfig, sectionOrder: order },
                       })
                     }
                   />

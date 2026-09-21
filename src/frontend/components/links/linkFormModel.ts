@@ -33,7 +33,8 @@ export function emptyLinkForm(): LinkFormValues {
     title: '',
     url: '',
     icon: 'link',
-    align: 'left',
+    // New links default to centred text, matching the public profile's default look.
+    align: 'center',
     sectionId: '',
     showLocation: true,
     showUrl: true,

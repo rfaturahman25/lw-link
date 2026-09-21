@@ -18,6 +18,10 @@ describe('linkFormModel', () => {
     expect(validateLinkForm({ ...emptyLinkForm(), title: 'x', url: 'https://a.com' })).toEqual({})
   })
 
+  it('defaults new links to centred text', () => {
+    expect(emptyLinkForm().align).toBe('center')
+  })
+
   it('maps a location link, including the hidden-location flag', () => {
     const v = linkFormFromLink({
       id: '1',

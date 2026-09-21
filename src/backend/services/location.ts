@@ -1,16 +1,18 @@
 // Smart Link metadata resolution.
 //
-// We deliberately avoid external geocoding APIs: there is no reliable, key-free
-// provider, and we must not fake data. Instead we extract only what Google Maps
-// URLs actually contain (place slug + coordinates). Short links (maps.app.goo.gl)
-// are expanded once, server-side, at save time — never on a public page view.
+// Google Maps URLs only carry a place slug and coordinates. When the slug has no
+// address we reverse-geocode the coordinates once, at save time, via Nominatim
+// (OpenStreetMap — key-free, real data, no faking). Failures degrade to "no
+// address" so a link is never blocked by a third-party outage. Short links
+// (maps.app.goo.gl) are expanded once, server-side, at save time — never on a
+// public page view.
 
 export type LocationMetadata = {
   placeName?: string
   address?: string
   lat?: number
   lng?: number
-  source: 'url' | 'url+redirect'
+  source: 'url' | 'url+redirect' | 'url+geocode'
   // User preference: embed a map on the public profile (set from the editor).
   showLocation?: boolean
 }
@@ -96,6 +98,8 @@ export function extractLocation(url: string): LocationMetadata | null {
 
 const SHORT_HOSTS = new Set(['maps.app.goo.gl'])
 
+const USER_AGENT = 'Lensa-Links/1.0 (+https://links.lensawaktu.id)'
+
 async function expandShortUrl(url: string): Promise<string> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 4000)
@@ -103,11 +107,49 @@ async function expandShortUrl(url: string): Promise<string> {
     const res = await fetch(url, {
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'User-Agent': 'Lensa-Links/1.0 (+https://links.lensawaktu.id)' },
+      headers: { 'User-Agent': USER_AGENT },
     })
     return res.url || url
   } catch {
     return url
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// Compose a readable, single-line address from Nominatim's address parts:
+// "<street> <number>, <area>, <city>".
+function formatAddress(a: Record<string, string> | undefined): string | null {
+  if (!a) return null
+  const street = [a.road || a.pedestrian || a.footway || a.path, a.house_number]
+    .filter(Boolean)
+    .join(' ')
+  const area = a.neighbourhood || a.village || a.suburb || a.city_block || a.hamlet
+  const city = a.city_district || a.city || a.town || a.municipality || a.county
+  const parts = [street, area, city].filter((p): p is string => Boolean(p && p.trim()))
+  if (parts.length === 0) return null
+  const joined = parts.join(', ')
+  return joined.length > 140 ? `${joined.slice(0, 137)}…` : joined
+}
+
+// Reverse geocode coordinates into a human address. Best-effort only: any
+// failure (timeout, rate limit, blocked egress) returns null.
+async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 4500)
+  try {
+    const endpoint =
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1` +
+      `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`
+    const res = await fetch(endpoint, {
+      signal: controller.signal,
+      headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'id,en' },
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { address?: Record<string, string> }
+    return formatAddress(data.address)
+  } catch {
+    return null
   } finally {
     clearTimeout(timer)
   }
@@ -130,5 +172,14 @@ export async function resolveSmartLink(url: string): Promise<SmartLink> {
     return { type: 'link', metadata: null }
   }
   if (isShort && target !== url) metadata.source = 'url+redirect'
+  // No address in the URL but we do have coordinates: resolve the real address
+  // so the card shows a street instead of a meaningless "Location" placeholder.
+  if (!metadata.address && metadata.lat !== undefined && metadata.lng !== undefined) {
+    const address = await reverseGeocode(metadata.lat, metadata.lng)
+    if (address) {
+      metadata.address = address
+      metadata.source = 'url+geocode'
+    }
+  }
   return { type: 'location', metadata }
 }

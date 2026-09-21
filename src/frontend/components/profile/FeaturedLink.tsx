@@ -1,5 +1,4 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { ExternalLink } from 'lucide-react'
 import type { ProfileViewLink } from './LinkCard'
 
 type Props = {
@@ -29,17 +28,13 @@ export default function FeaturedLink({ link, interactive = false, onLinkClick }:
       className="pp-featured pp-interactive group block"
     >
       <img src={link.thumbnail as string} alt="" className="pp-featured-img" loading="lazy" />
-      <div className="flex items-center justify-between gap-2 px-4 py-3">
+      <div className="px-4 py-3">
         <p
           className="pp-link-title min-w-0 truncate font-semibold"
           style={{ color: 'var(--pp-text)' }}
         >
           {link.title}
         </p>
-        <ExternalLink
-          className="h-4 w-4 shrink-0 opacity-70 transition-opacity duration-200 ease-out group-hover:opacity-100"
-          style={{ color: 'var(--pp-text-secondary)' }}
-        />
       </div>
     </a>
   )

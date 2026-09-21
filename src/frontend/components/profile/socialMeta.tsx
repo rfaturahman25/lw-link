@@ -10,9 +10,8 @@ import {
   Phone,
   Facebook,
   Youtube,
-  Music,
 } from 'lucide-react'
-import { WhatsAppIcon, XIcon } from '../icons/BrandIcons'
+import { TikTokIcon, WhatsAppIcon, XIcon } from '../icons/BrandIcons'
 
 type IconType = ComponentType<{ className?: string | undefined }>
 
@@ -69,7 +68,7 @@ export const SOCIAL_META: Record<SocialPlatform, SocialMeta> = {
     placeholder: '@lensawaktu or URL',
     hint: 'Username (@) or full URL',
     kind: 'handle',
-    Icon: Music,
+    Icon: TikTokIcon,
   },
   threads: {
     label: 'Threads',

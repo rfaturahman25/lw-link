@@ -3,6 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ShareCard from '@frontend/components/profile/ShareCard'
 
 describe('ShareCard disclosure', () => {
+  it('animates into place when it mounts (e.g. enabling the share block)', () => {
+    const { container } = render(<ShareCard profileUrl="https://example.com/@jane" />)
+    expect(container.firstElementChild?.className).toContain('pp-share-in')
+  })
+
   it('starts collapsed and animates open on click', () => {
     render(<ShareCard profileUrl="https://example.com/@jane" />)
 

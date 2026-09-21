@@ -2,15 +2,25 @@ import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import PublicProfileView from '@frontend/components/profile/PublicProfileView'
 import {
+  SOCIAL_META,
   SOCIAL_PLATFORMS,
   socialHref,
   validateSocialValue,
 } from '@frontend/components/profile/socialMeta'
+import { TikTokIcon } from '@frontend/components/icons/BrandIcons'
 import { resolveSocialStyle, resolveTheme } from '@frontend/themes'
 
 describe('social platform metadata', () => {
   it('includes the WhatsApp platform', () => {
     expect(SOCIAL_PLATFORMS).toContain('whatsapp')
+  })
+
+  it('uses the real TikTok brand glyph, not a music note', () => {
+    expect(SOCIAL_META.tiktok.Icon).toBe(TikTokIcon)
+    const { container } = render(<TikTokIcon />)
+    const path = container.querySelector('path')?.getAttribute('d') ?? ''
+    // The official silhouette starts with the characteristic note outline.
+    expect(path.startsWith('M12.525.02')).toBe(true)
   })
 })
 

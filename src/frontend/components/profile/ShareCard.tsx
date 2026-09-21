@@ -45,7 +45,7 @@ export default function ShareCard({ profileUrl, embedded = false }: Props) {
   const ease = 'ease-[cubic-bezier(0.22,1,0.36,1)]'
 
   return (
-    <div className="pp-card pp-share overflow-hidden">
+    <div className="pp-card pp-share pp-share-in overflow-hidden">
       <button
         type="button"
         aria-expanded={open}

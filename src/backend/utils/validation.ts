@@ -28,7 +28,6 @@ const fontFamilySchema = z.enum([
   'jetbrains-mono',
   'space-mono',
   'silkscreen',
-  'press-start-2p',
   'vt323',
 ])
 const buttonShapeSchema = z.enum(['square', 'rounded', 'pill', 'outlined', 'elevated'])
@@ -68,6 +67,8 @@ const themeConfigSchema = z.object({
   density: contentDensitySchema.optional(),
   profileAlign: profileAlignSchema.optional(),
   featuredLinkId: z.string().max(64).optional().nullable(),
+  // Public page group order (section ids + the '__none__' sentinel).
+  sectionOrder: z.array(z.string().min(1).max(64)).max(60).optional(),
   // Visual builder options (additive; older configs stay valid).
   typeScale: z.number().min(0.9).max(1.15).optional(),
   avatarSize: avatarSizeSchema.optional(),
