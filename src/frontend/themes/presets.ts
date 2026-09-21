@@ -365,21 +365,6 @@ export const THEMES: ProfileTheme[] = [
     shadowHover: '0 0 0 1px rgba(255,122,89,0.35), 0 14px 32px rgba(226,86,60,0.28)',
     cardRadius: '1.25rem',
   }),
-  defineTheme({
-    id: 'neo-brutalist',
-    name: 'Neo Brutalist',
-    category: 'brutalist',
-    // Flat paper, heavy black outlines, hard offset shadows, zero radius.
-    background: { color: '#faf5e6' },
-    colors: { text: '#0f0f0f', textSecondary: '#4b4b4b', card: '#ffffff', cardOpacity: 1, button: '#111111', buttonText: '#ffffff', accent: '#ff4d00', socialIcon: '#111111' },
-    fontFamily: 'space-grotesk',
-    shape: 'square',
-    hover: 'lift',
-    border: 'rgba(15,15,15,0.85)',
-    shadow: '4px 4px 0 rgba(15,15,15,0.85)',
-    shadowHover: '7px 7px 0 rgba(15,15,15,0.9)',
-    cardRadius: '0px',
-  }),
 ]
 
 export const DEFAULT_THEME_ID = 'mesh'
@@ -389,13 +374,14 @@ export const THEME_CATEGORIES: { id: ThemeCategory; label: string }[] = [
   { id: 'minimal', label: 'Minimal' },
   { id: 'retro', label: 'Retro' },
   { id: 'earthy', label: 'Earthy' },
-  { id: 'brutalist', label: 'Brutal' },
   { id: 'vibrant', label: 'Vibrant' },
   { id: 'artistic', label: 'Artistic' },
   { id: 'dark', label: 'Dark' },
 ]
 
-// Legacy color_palette values no longer exist as themes; map each to a surviving preset.
+// Legacy color_palette values no longer exist as themes; map each to a surviving
+// preset. Also covers theme ids that were retired (so a saved config keeps its
+// other settings instead of falling back to the default theme).
 export const LEGACY_PALETTE_MAP: Record<string, string> = {
   ocean: 'aurora',
   sunset: 'ember',
@@ -405,6 +391,7 @@ export const LEGACY_PALETTE_MAP: Record<string, string> = {
   candy: 'opal',
   golden: 'ember',
   monochrome: 'grid',
+  'neo-brutalist': 'retro-minimal',
 }
 
 export const THEME_MAP: Record<string, ProfileTheme> = THEMES.reduce(

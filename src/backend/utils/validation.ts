@@ -176,3 +176,8 @@ export const linkUpdateSchema = z.object({
 export const reorderSchema = z.object({
   orderedIds: z.array(z.string()).min(1),
 })
+
+// Smart-link preview: resolve metadata for a URL without persisting anything.
+export const linkResolveSchema = z.object({
+  url: urlSchema,
+})

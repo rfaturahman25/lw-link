@@ -22,7 +22,7 @@ export type ThemeButtonShape = 'square' | 'rounded' | 'pill' | 'outlined' | 'ele
 export type ThemeHoverEffect = 'lift' | 'glow' | 'scale' | 'none'
 
 // Presentation grouping used by the admin theme picker.
-export type ThemeCategory = 'minimal' | 'artistic' | 'dark' | 'vibrant' | 'retro' | 'earthy' | 'brutalist'
+export type ThemeCategory = 'minimal' | 'artistic' | 'dark' | 'vibrant' | 'retro' | 'earthy'
 
 export type ThemeBackground = {
   color: string

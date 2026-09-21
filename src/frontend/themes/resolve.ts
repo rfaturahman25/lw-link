@@ -138,7 +138,10 @@ export function parseStoredThemeConfig(raw: unknown): StoredThemeConfig | null {
   }
   if (!value || typeof value !== 'object') return null
   const cfg = value as StoredThemeConfig
-  if (typeof cfg.themeId !== 'string' || !THEME_MAP[cfg.themeId]) return null
+  // Resolve through the legacy map too, so a config saved with a retired theme
+  // id still parses (keeping every other setting) and simply falls back to the
+  // replacement preset.
+  if (typeof cfg.themeId !== 'string' || !getThemeById(cfg.themeId)) return null
   const overrides = sanitizeOverrides(cfg.overrides)
   const showShare = typeof cfg.showShare === 'boolean' ? cfg.showShare : undefined
   const socialStyle =

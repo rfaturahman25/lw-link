@@ -33,14 +33,23 @@ describe('theme presets', () => {
     expect(THEMES.some((t) => t.isDark)).toBe(true)
   })
 
-  it('includes the retro, earthy and brutalist collections', () => {
-    for (const category of ['retro', 'earthy', 'brutalist'] as const) {
+  it('includes the retro and earthy collections', () => {
+    for (const category of ['retro', 'earthy'] as const) {
       expect(THEMES.some((t) => t.category === category)).toBe(true)
     }
-    const brutal = THEMES.find((t) => t.id === 'neo-brutalist')
-    expect(brutal?.button.shape).toBe('square')
-    expect(brutal?.effects.cardRadius).toBe('0px')
-    expect(brutal?.effects.shadow).toContain('rgba(15,15,15')
+    expect(THEMES.some((t) => t.id === 'retro-minimal')).toBe(true)
+    expect(THEMES.some((t) => t.id === 'earthy-vintage')).toBe(true)
+  })
+
+  it('retires the brutalist theme without dropping the rest of the config', () => {
+    expect(THEMES.some((t) => t.id === 'neo-brutalist')).toBe(false)
+    const parsed = parseStoredThemeConfig(
+      JSON.stringify({ themeId: 'neo-brutalist', avatarShape: 'hex', contentWidth: 'wide' })
+    )
+    expect(parsed).not.toBeNull()
+    // Other settings survive; the theme itself maps to the replacement preset.
+    expect(parsed?.avatarShape).toBe('hex')
+    expect(resolveTheme(parsed).id).toBe('retro-minimal')
   })
 
   it('retires the Press Start 2P font without breaking saved configs', () => {

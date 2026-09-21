@@ -42,6 +42,10 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
   const showIcon = link.icon !== 'none'
   const align =
     link.align === 'center' ? 'text-center' : link.align === 'right' ? 'text-right' : 'text-left'
+  // The location row is a flex line, so it needs explicit justification to
+  // follow the card's text alignment instead of always sitting flush left.
+  const justify =
+    link.align === 'center' ? 'justify-center' : link.align === 'right' ? 'justify-end' : 'justify-start'
 
   const handleClick = (e: ReactMouseEvent) => {
     if (!interactive) {
@@ -76,11 +80,11 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
         </p>
         {showLoc ? (
           <p
-            className="pp-link-sub mt-1 flex items-center gap-1"
+            className={`pp-link-sub mt-1 flex items-center gap-1 ${justify}`}
             style={{ color: 'var(--pp-link-secondary)' }}
           >
             <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{locSubtitle}</span>
+            <span className="min-w-0 truncate">{locSubtitle}</span>
           </p>
         ) : showUrl ? (
           <p className="pp-link-sub mt-1 truncate" style={{ color: 'var(--pp-link-secondary)' }}>

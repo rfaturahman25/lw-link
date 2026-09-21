@@ -229,6 +229,29 @@ describe('PublicProfileView location smart link', () => {
     expect(screen.getByText('example.com/page')).toBeInTheDocument()
   })
 
+  it('aligns the location row with the card text alignment', () => {
+    const { container } = render(
+      <PublicProfileView
+        displayName="Jane"
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+        links={[
+          {
+            id: '1',
+            title: 'Kantor',
+            url: PLACE_URL,
+            icon: null,
+            type: 'location',
+            align: 'center',
+            metadata: JSON.stringify({ address: 'Bogor, Jawa Barat' }),
+          },
+        ]}
+      />
+    )
+    const row = container.querySelector('.pp-link-sub')
+    expect(row?.className).toContain('justify-center')
+  })
+
   it('renders no outbound redirect icon on link cards', () => {
     const { container } = render(
       <PublicProfileView

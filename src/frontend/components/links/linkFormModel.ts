@@ -13,6 +13,17 @@ export type LinkFormValues = {
 
 export type LinkFormErrors = { title?: string; url?: string }
 
+// Smart-link preview returned by `POST /api/links/resolve` (nothing is saved).
+export type ResolvedLocation = {
+  type: 'link' | 'location'
+  metadata: {
+    placeName?: string
+    address?: string
+    lat?: number
+    lng?: number
+  } | null
+}
+
 export type LinkFormLink = {
   id: string
   title: string

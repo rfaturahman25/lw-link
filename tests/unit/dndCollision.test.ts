@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { droppableType, selectDroppables } from '@frontend/components/links/dndCollision'
+import { droppableType, resolveTargetSection, selectDroppables } from '@frontend/components/links/dndCollision'
+import { UNSECTIONED_GROUP } from '@frontend/themes'
 
 const container = (id: string, type?: string) => ({
   id,
@@ -41,5 +42,26 @@ describe('selectDroppables', () => {
   it('falls back to non-active droppables when there are no other sections', () => {
     const list = [container('s1', 'section'), container('l1', 'link')]
     expect(selectDroppables(list, { id: 's1', type: 'section' }).map((c) => c.id)).toEqual(['l1'])
+  })
+})
+
+describe('resolveTargetSection', () => {
+  it('drops onto a section header', () => {
+    expect(resolveTargetSection({ type: 'section' }, 's2', null)).toBe('s2')
+  })
+
+  it('drops onto a link or container inside a section', () => {
+    expect(resolveTargetSection({ type: 'link', sectionId: 's2' }, 'l1', 's1')).toBe('s2')
+    expect(resolveTargetSection({ type: 'container', sectionId: null }, 'c1', 's1')).toBeNull()
+  })
+
+  it('maps the unsectioned group header to "no section", not the sentinel id', () => {
+    // Regression: returning the literal `__none__` made the update fail as an
+    // invalid section, so links could never be dragged out of a section.
+    expect(resolveTargetSection({ type: 'section' }, UNSECTIONED_GROUP, 's1')).toBeNull()
+  })
+
+  it('keeps the source section when the drop target is unknown', () => {
+    expect(resolveTargetSection(undefined, 'x', 's1')).toBe('s1')
   })
 })

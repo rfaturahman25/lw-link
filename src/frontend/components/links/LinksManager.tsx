@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useDashboardContext } from '../../pages/dashboard/DashboardLayout'
 import { api } from '../../services/api'
 import { UNSECTIONED_GROUP } from '../../themes'
@@ -41,8 +41,8 @@ import {
   linkFormFromLink,
   validateLinkForm,
 } from './linkFormModel'
-import type { LinkFormErrors, LinkFormLink, LinkFormValues } from './linkFormModel'
-import { linksCollisionDetection } from './dndCollision'
+import type { LinkFormErrors, LinkFormLink, LinkFormValues, ResolvedLocation } from './linkFormModel'
+import { linksCollisionDetection, resolveTargetSection } from './dndCollision'
 
 // Drop target for a section (or the unsectioned group) so links can be dragged across sections.
 function Droppable({
@@ -473,8 +473,13 @@ export default function LinksManager({
     setLinkErrors({})
   }
 
-  const updateLinkForm = (patch: Partial<LinkFormValues>) => {
-    setLinkForm((f) => ({ ...f, ...patch }))
+  // Server-side Smart Link preview for the Add/Edit form (never persists).
+  const resolveLocation = useCallback(async (url: string): Promise<ResolvedLocation> => {
+    const res = (await api.linkResolve(url)) as { data?: ResolvedLocation }
+    return res.data ?? { type: 'link', metadata: null }
+  }, [])
+
+  const updateLinkForm = (patch: Partial<LinkFormValues>) => {    setLinkForm((f) => ({ ...f, ...patch }))
     if (patch.title !== undefined && linkErrors.title) setLinkErrors((p) => ({ ...p, title: '' }))
     if (patch.url !== undefined && linkErrors.url) setLinkErrors((p) => ({ ...p, url: '' }))
   }
@@ -609,12 +614,7 @@ export default function LinksManager({
     // --- Link reorder (within or across sections) ---
     const linkId = String(active.id)
     const sourceSection = activeData?.sectionId ?? null
-    let targetSection: string | null = sourceSection
-    if (overData?.type === 'link' || overData?.type === 'container') {
-      targetSection = overData.sectionId ?? null
-    } else if (overData?.type === 'section') {
-      targetSection = String(over.id)
-    }
+    const targetSection = resolveTargetSection(overData, over.id, sourceSection)
     if (String(active.id) === String(over.id) && targetSection === sourceSection) return
 
     const source = groupOf(sourceSection)
@@ -958,6 +958,7 @@ export default function LinksManager({
           onChange={updateLinkForm}
           onUploadThumbnail={uploadThumbnail}
           onSubmit={submitLink}
+          resolveLocation={resolveLocation}
         />
       </Modal>
     </div>

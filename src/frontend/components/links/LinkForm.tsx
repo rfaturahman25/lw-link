@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
-import { MapPin } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Loader2, MapPin } from 'lucide-react'
 import { ICON_OPTIONS } from '../profile/linkIcons'
 import { isMapsUrl } from '../profile/smartLink'
-import type { LinkFormErrors, LinkFormValues } from './linkFormModel'
+import type { LinkFormErrors, LinkFormValues, ResolvedLocation } from './linkFormModel'
 
 type Props = {
   formId: string
@@ -13,7 +13,15 @@ type Props = {
   onChange: (patch: Partial<LinkFormValues>) => void
   onUploadThumbnail: (e: React.ChangeEvent<HTMLInputElement>) => void
   onSubmit: (e: React.FormEvent) => void
+  /** Resolves Maps metadata server-side so the location can be previewed before saving. */
+  resolveLocation?: ((url: string) => Promise<ResolvedLocation>) | undefined
 }
+
+type LocationPreview =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; placeName?: string | undefined; address?: string | undefined }
+  | { status: 'none' }
 
 // One form for both Add and Edit. The parent owns the values/errors/submitting
 // state so the modal can reuse it without duplicating the fields.
@@ -26,7 +34,45 @@ export default function LinkForm({
   onChange,
   onUploadThumbnail,
   onSubmit,
+  resolveLocation,
 }: Props) {
+  const [location, setLocation] = useState<LocationPreview>({ status: 'idle' })
+  const url = values.url.trim()
+  const isMaps = isMapsUrl(url)
+
+  // Debounced Smart Link preview: the owner pastes a Maps URL and sees the
+  // resolved place/address (or a clear "not readable" state) without saving.
+  useEffect(() => {
+    if (!isMaps || !resolveLocation) {
+      setLocation({ status: 'idle' })
+      return
+    }
+    let cancelled = false
+    setLocation({ status: 'loading' })
+    const timer = window.setTimeout(() => {
+      resolveLocation(url)
+        .then((res) => {
+          if (cancelled) return
+          if (res.type === 'location' && res.metadata) {
+            setLocation({
+              status: 'ready',
+              placeName: res.metadata.placeName,
+              address: res.metadata.address,
+            })
+          } else {
+            setLocation({ status: 'none' })
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setLocation({ status: 'none' })
+        })
+    }, 700)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [isMaps, url, resolveLocation])
+
   const iconButtons = useMemo(
     () =>
       ICON_OPTIONS.map((opt) => {
@@ -83,12 +129,41 @@ export default function LinkForm({
             aria-invalid={!!errors.url}
           />
           {errors.url && <p className="mt-1 text-xs text-red-600">{errors.url}</p>}
-          {isMapsUrl(values.url) ? (
-            <div className="mt-2 space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+          {isMaps ? (
+            <div className="mt-2 space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
               <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
                 <MapPin className="h-3.5 w-3.5 shrink-0" /> Google Maps location detected — this
                 will be a Location Smart Link.
               </p>
+
+              {location.status === 'loading' && (
+                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  Resolving location…
+                </p>
+              )}
+
+              {location.status === 'ready' && (
+                <div className="rounded-md border border-primary/20 bg-background/70 p-2">
+                  {location.placeName && (
+                    <p className="text-xs font-semibold">{location.placeName}</p>
+                  )}
+                  {location.address && (
+                    <p className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+                      <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span>{location.address}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {location.status === 'none' && (
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  No place or address could be read from this URL. The link still works as a normal
+                  link.
+                </p>
+              )}
+
               <label className="flex items-center gap-2 text-xs">
                 <input
                   type="checkbox"
@@ -97,9 +172,6 @@ export default function LinkForm({
                 />
                 Show location info on the public profile
               </label>
-              <p className="text-[11px] text-muted-foreground">
-                Name &amp; address are extracted from the URL when you save.
-              </p>
             </div>
           ) : (
             <p className="mt-1 text-[11px] text-muted-foreground">

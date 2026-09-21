@@ -34,6 +34,7 @@ export const api = {
   linkDelete: (id: string) => request(`/api/links/${id}`, { method: 'DELETE' }),
   linkToggle: (id: string) => request(`/api/links/${id}/toggle`, { method: 'PUT' }),
   linkReorder: (orderedIds: string[]) => request('/api/links/reorder', { method: 'PUT', body: JSON.stringify({ orderedIds }) }),
+  linkResolve: (url: string) => request('/api/links/resolve', { method: 'POST', body: JSON.stringify({ url }) }),
   publicProfile: (username: string) => request(`/api/public/${username}`),
   trackView: (username: string) => request(`/api/public/${username}/view`, { method: 'POST' }),
   trackClick: (username: string, linkId: string) => request(`/api/public/${username}/click`, { method: 'POST', body: JSON.stringify({ linkId }) }),

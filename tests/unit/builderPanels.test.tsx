@@ -120,11 +120,11 @@ describe('ThemePanel controls', () => {
     expect(screen.getByText('Upload banner')).toBeInTheDocument()
   })
 
-  it('lists the new retro / earthy / brutalist themes', () => {
+  it('lists the new retro / earthy themes', () => {
     render(<ThemePanel {...baseProps} hasSocials onConfigureSocials={noop} />)
-    expect(screen.getByRole('button', { name: 'Neo Brutalist theme' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Earthy Vintage theme' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retro Minimal theme' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Neo Brutalist theme' })).not.toBeInTheDocument()
   })
 
   it('no longer offers the duplicate "Framed avatar" header style', () => {

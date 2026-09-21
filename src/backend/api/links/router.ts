@@ -6,7 +6,7 @@ import { links, sections } from '../../db/schema'
 import { authMiddleware } from '../../middleware/auth'
 import { requirePermission, PERMISSIONS } from '../../middleware/rbac'
 import type { AuthUser } from '../../middleware/auth'
-import { linkCreateSchema, linkUpdateSchema, reorderSchema } from '../../utils/validation'
+import { linkCreateSchema, linkResolveSchema, linkUpdateSchema, reorderSchema } from '../../utils/validation'
 import { resolveSmartLink } from '../../services/location'
 
 type Bindings = { DB: D1Database }
@@ -20,6 +20,14 @@ linksRoutes.get('/', async (c) => {
   const db = createDb(c.env.DB)
   const rows = await db.select().from(links).where(eq(links.userId, user.id)).orderBy(asc(links.position))
   return c.json({ success: true, data: rows })
+})
+
+// POST /links/resolve - preview Smart Link metadata (place + address) for a URL
+// without saving it, so the editor can show the resolved location while typing.
+linksRoutes.post('/resolve', zValidator('json', linkResolveSchema), async (c) => {
+  const { url } = c.req.valid('json')
+  const smart = await resolveSmartLink(url)
+  return c.json({ success: true, data: smart })
 })
 
 linksRoutes.post('/', zValidator('json', linkCreateSchema), async (c) => {

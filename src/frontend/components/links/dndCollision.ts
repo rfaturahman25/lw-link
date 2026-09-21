@@ -1,10 +1,32 @@
 import { closestCenter } from '@dnd-kit/core'
 import type { CollisionDetection } from '@dnd-kit/core'
+import { UNSECTIONED_GROUP } from '../../themes'
 
 type DroppableLike = { id: string | number; data?: { current?: unknown } }
 
 export function droppableType(container: { data?: { current?: unknown } }): string | undefined {
   return (container.data?.current as { type?: string } | undefined)?.type
+}
+
+// Resolve which section a dragged link should land in.
+//
+// The unsectioned group is itself a sortable node whose id is the
+// `UNSECTIONED_GROUP` sentinel, so hovering its header must map to `null` (no
+// section) rather than the literal sentinel — otherwise the update is rejected
+// as an invalid section and the link snaps back.
+export function resolveTargetSection(
+  overData: { type?: string; sectionId?: string | null } | undefined,
+  overId: string | number,
+  fallback: string | null
+): string | null {
+  if (overData?.type === 'link' || overData?.type === 'container') {
+    return overData.sectionId ?? null
+  }
+  if (overData?.type === 'section') {
+    const key = String(overId)
+    return key === UNSECTIONED_GROUP ? null : key
+  }
+  return fallback
 }
 
 // Pick the droppables a drag may snap to.
