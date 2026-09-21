@@ -4,7 +4,8 @@ import { api } from '../../services/api'
 import { isMapsUrl, parseSmartMetadata } from '../profile/smartLink'
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   KeyboardSensor,
@@ -27,6 +28,7 @@ import {
   Trash2,
   Folder,
   MapPin,
+  Star,
 } from 'lucide-react'
 import { renderLinkIcon } from '../profile/linkIcons'
 import Modal from '../ui/Modal'
@@ -63,6 +65,9 @@ function SortableLinkItem({
   onEdit,
   onToggle,
   onDelete,
+  featured,
+  showFeatured,
+  onToggleFeatured,
 }: {
   link: {
     id: string
@@ -73,10 +78,14 @@ function SortableLinkItem({
     metadata?: string | null
     enabled: boolean
     sectionId: string | null
+    thumbnail?: string | null
   }
   onEdit: () => void
   onToggle: () => void
   onDelete: () => void
+  featured?: boolean
+  showFeatured?: boolean
+  onToggleFeatured?: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: link.id,
@@ -100,33 +109,60 @@ function SortableLinkItem({
       <button
         {...attributes}
         {...listeners}
-        className="inline-flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing cursor-grab"
+        className="inline-flex h-10 w-10 shrink-0 touch-none cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing"
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      {link.icon !== 'none' && (
-        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-          {renderLinkIcon(link.icon)}
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          {link.type === 'location' && (
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-          )}
-          <span className="truncate">
-            {link.title} {link.enabled ? '' : '(disabled)'}
-          </span>
-          {link.type === 'location' && (
-            <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-              {locMeta?.showLocation === false ? 'LOCATION HIDDEN' : 'LOCATION'}
+      {/* The whole icon + text area is a drag surface so touch users are not
+          forced to hit the small handle; `touch-pan-y` keeps scrolling intact. */}
+      <div
+        {...listeners}
+        className="flex min-w-0 flex-1 touch-pan-y select-none items-center gap-2"
+      >
+        {link.icon !== 'none' && (
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            {renderLinkIcon(link.icon)}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            {link.type === 'location' && (
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+            )}
+            <span className="truncate">
+              {link.title} {link.enabled ? '' : '(disabled)'}
             </span>
-          )}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+            {link.type === 'location' && (
+              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                {locMeta?.showLocation === false ? 'LOCATION HIDDEN' : 'LOCATION'}
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+        </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
+        {showFeatured && (
+          <button
+            type="button"
+            onClick={onToggleFeatured}
+            aria-pressed={!!featured}
+            aria-label={featured ? 'Remove from featured' : 'Make featured'}
+            title={
+              featured
+                ? 'Featured link — shown as the large tile. Click to remove.'
+                : 'Make featured (shown as a large tile on the profile)'
+            }
+            className={`inline-flex h-8 w-8 items-center justify-center rounded border transition-colors ${
+              featured
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            <Star className={`h-3.5 w-3.5 ${featured ? 'fill-current' : ''}`} />
+          </button>
+        )}
         <button
           onClick={onEdit}
           className="rounded border px-2.5 py-1.5 text-xs hover:bg-accent"
@@ -188,24 +224,33 @@ function SortableSection({
         <button
           {...attributes}
           {...listeners}
-          className="inline-flex h-9 w-9 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing"
+          className="inline-flex h-10 w-10 shrink-0 touch-none cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent active:cursor-grabbing"
           aria-label="Drag to reorder section"
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <Folder className="h-4 w-4 text-primary" />
-        {editing ? (
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            onBlur={handleSave}
-            autoFocus
-            className="input h-7 text-sm font-semibold flex-1"
-          />
-        ) : (
-          <h3 className="font-semibold flex-1">{section.title}</h3>
-        )}
+        {/* Folder + title is a second drag surface for touch; the rename input
+            stays fully interactive because listeners are dropped while editing. */}
+        <div
+          {...(editing ? {} : listeners)}
+          className={`flex min-w-0 flex-1 items-center gap-2 touch-pan-y ${
+            editing ? '' : 'select-none'
+          }`}
+        >
+          <Folder className="h-4 w-4 shrink-0 text-primary" />
+          {editing ? (
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              onBlur={handleSave}
+              autoFocus
+              className="input h-7 text-sm font-semibold flex-1"
+            />
+          ) : (
+            <h3 className="truncate font-semibold">{section.title}</h3>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {!editing && (
             <button
@@ -230,7 +275,17 @@ function SortableSection({
   )
 }
 
-export default function LinksManager({ embedded = false }: { embedded?: boolean }) {
+export default function LinksManager({
+  embedded = false,
+  featuredLinkId = null,
+  onSetFeatured,
+}: {
+  embedded?: boolean
+  /** The link currently promoted to the featured tile, if any. */
+  featuredLinkId?: string | null
+  /** Promote/demote a link (pass null to clear). Owned by the builder draft. */
+  onSetFeatured?: (id: string | null) => void
+}) {
   const { links, sections, reload, setLinks, setSections } = useDashboardContext() as unknown as {
     links: Array<{
       id: string
@@ -262,8 +317,12 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
   const [submitting, setSubmitting] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
 
+  // Mouse drags start after a small movement; touch drags require a short
+  // long-press so a finger swipe still scrolls the list. Both drag surfaces also
+  // use `touch-pan-y`, so vertical scrolling is never blocked.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 160, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -426,9 +485,12 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
       const newIndex = ordered.findIndex((s) => s.id === targetId)
       if (oldIndex === -1 || newIndex === -1) return
       const newOrder = arrayMove(ordered, oldIndex, newIndex)
-      setSections(newOrder)
+      // Keep positions in sync with the new visual order so later link-order
+      // calculations (which sort by position) stay correct without a reload.
+      const reordered = newOrder.map((s, i) => ({ ...s, position: i + 1 }))
+      setSections(reordered)
       try {
-        await api.sectionReorder(newOrder.map((s) => s.id))
+        await api.sectionReorder(reordered.map((s) => s.id))
       } catch {
         await reload()
       }
@@ -536,7 +598,7 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
 
       <div className="min-w-0 space-y-6">
       {showAddSection && (
-        <form onSubmit={handleAddSection} className="card space-y-2 rounded-2xl p-4">
+        <form onSubmit={handleAddSection} className="form-reveal card space-y-2 rounded-2xl p-4">
           <div className="flex gap-2">
             <input
               value={newSectionTitle}
@@ -587,7 +649,8 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
       )}
 
       <p className="text-xs text-muted-foreground">
-        Drag the handle on the left of each link to reorder. Use ON/OFF to hide without deleting.
+        Drag the handle — or press and hold a row — to reorder. Use ON/OFF to hide without
+        deleting.
       </p>
 
       <DndContext sensors={sensors} collisionDetection={linksCollisionDetection} onDragEnd={handleDragEnd}>
@@ -626,6 +689,11 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
                               onEdit={() => openEditLink(l as LinkFormLink)}
                               onToggle={() => toggleLink(l.id)}
                               onDelete={() => deleteLink(l.id)}
+                              showFeatured={!!l.thumbnail && !!onSetFeatured}
+                              featured={featuredLinkId === l.id}
+                              onToggleFeatured={() =>
+                                onSetFeatured?.(featuredLinkId === l.id ? null : l.id)
+                              }
                             />
                           ))}
                         </div>
@@ -673,6 +741,9 @@ export default function LinksManager({ embedded = false }: { embedded?: boolean 
                     onEdit={() => openEditLink(l as LinkFormLink)}
                     onToggle={() => toggleLink(l.id)}
                     onDelete={() => deleteLink(l.id)}
+                    showFeatured={!!l.thumbnail && !!onSetFeatured}
+                    featured={featuredLinkId === l.id}
+                    onToggleFeatured={() => onSetFeatured?.(featuredLinkId === l.id ? null : l.id)}
                   />
                 ))}
               </div>

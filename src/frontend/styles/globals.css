@@ -187,7 +187,7 @@
     max-height: 46vw;
     margin-inline: auto;
     overflow: hidden;
-    background-color: var(--pp-card, #ffffff);
+    background-color: var(--pp-avatar-bg, var(--pp-card, #ffffff));
     border-radius: var(--pp-avatar-radius, 9999px);
     box-shadow:
       var(--pp-avatar-shadow, none),
@@ -525,6 +525,100 @@
     }
   }
 
+  /* Inline reveal for the "Add Section" form: unfolds from the top so the list
+     below is pushed down smoothly instead of snapping into place. */
+  .form-reveal {
+    transform-origin: top center;
+    animation: formReveal 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes formReveal {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scaleY(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* ---- Dialog motion -------------------------------------------------------
+     Mobile is a bottom sheet that slides up from below; desktop is a centred
+     card that fades and scales in. Both directions animate — Modal keeps the
+     panel mounted until the exit animation has finished. */
+  .modal-overlay-in {
+    animation: modalOverlayIn 260ms ease-out both;
+  }
+
+  .modal-overlay-out {
+    animation: modalOverlayOut 200ms ease-in both;
+  }
+
+  .modal-panel-motion {
+    --modal-enter-y: 100%;
+    --modal-enter-scale: 1;
+    --modal-exit-y: 100%;
+    --modal-exit-scale: 1;
+  }
+
+  .modal-panel-in {
+    animation: modalPanelIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .modal-panel-out {
+    animation: modalPanelOut 220ms cubic-bezier(0.4, 0, 0.6, 1) both;
+  }
+
+  @media (min-width: 640px) {
+    .modal-panel-motion {
+      --modal-enter-y: 20px;
+      --modal-enter-scale: 0.96;
+      --modal-exit-y: 12px;
+      --modal-exit-scale: 0.98;
+    }
+  }
+
+  @keyframes modalOverlayIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modalOverlayOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes modalPanelIn {
+    from {
+      opacity: 0;
+      transform: translateY(var(--modal-enter-y)) scale(var(--modal-enter-scale));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes modalPanelOut {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(var(--modal-exit-y)) scale(var(--modal-exit-scale));
+    }
+  }
+
   /* ---- Builder transitions -------------------------------------------------
      Direction-aware enters for menu/tab switches, mode switches and the
      device preview. The `to` state resolves to `transform: none` so an
@@ -655,6 +749,11 @@
 
   @media (prefers-reduced-motion: reduce) {
     .sheet-in,
+    .form-reveal,
+    .modal-overlay-in,
+    .modal-overlay-out,
+    .modal-panel-in,
+    .modal-panel-out,
     .anim-tab-forward,
     .anim-tab-backward,
     .anim-mode-in,

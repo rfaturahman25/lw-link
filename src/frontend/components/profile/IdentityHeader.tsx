@@ -76,38 +76,10 @@ export default function IdentityHeader({
           {bioNode}
         </div>
       </>
-    ) : headerStyle === 'shape' ? (
-      <>
-        {logoShape === 'plain' && !avatarUrl && logoUrl ? (
-          avatar
-        ) : (
-          <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28">
-            <div
-              className="absolute inset-0 rotate-6 rounded-[28px]"
-              style={{ background: 'var(--pp-accent-soft)' }}
-            />
-            <div className="pp-card relative flex h-full w-full items-center justify-center overflow-hidden rounded-[24px]">
-              {avatarUrl || logoUrl ? (
-                <img
-                  src={(avatarUrl || logoUrl) as string}
-                  alt={displayName}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span
-                  className="text-2xl font-semibold sm:text-3xl"
-                  style={{ color: 'var(--pp-text)' }}
-                >
-                  {displayName.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        {nameNode}
-        {bioNode}
-      </>
     ) : (
+      // `classic` and the retired `shape` style (framed avatar) both render the
+      // avatar through the single Avatar Shape configuration, so there is only
+      // one source of truth for the profile image shape.
       <>
         {avatar}
         {nameNode}

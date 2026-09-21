@@ -1,6 +1,8 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
+import { FONT_OPTIONS, loadAllFonts } from '../../themes'
+import type { ProfileFont } from '../../themes'
 
 /* -------------------------------------------------------------------------- */
 /* Field — a labelled control block with optional hint.                       */
@@ -38,18 +40,23 @@ export function Segmented<T extends string>({
   onChange,
   ariaLabel,
   size = 'md',
+  disabled = false,
 }: {
   value: T
   options: { value: T; label: string }[]
   onChange: (v: T) => void
   ariaLabel: string
   size?: 'sm' | 'md'
+  disabled?: boolean
 }) {
   return (
     <div
       role="group"
       aria-label={ariaLabel}
-      className="inline-flex w-full flex-wrap gap-1 rounded-xl border bg-muted/40 p-1"
+      aria-disabled={disabled || undefined}
+      className={`inline-flex w-full flex-wrap gap-1 rounded-xl border bg-muted/40 p-1 ${
+        disabled ? 'opacity-50' : ''
+      }`}
     >
       {options.map((o) => {
         const active = value === o.value
@@ -57,9 +64,10 @@ export function Segmented<T extends string>({
           <button
             key={o.value}
             type="button"
+            disabled={disabled}
             aria-pressed={active}
             onClick={() => onChange(o.value)}
-            className={`flex-1 rounded-lg text-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+            className={`flex-1 rounded-lg text-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed ${
               size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-xs'
             } ${
               active
@@ -68,6 +76,62 @@ export function Segmented<T extends string>({
             }`}
           >
             {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* FontPicker — a list where every option renders in its own typeface so the   */
+/* typography personality is visible before choosing.                          */
+/* -------------------------------------------------------------------------- */
+
+const FONT_SAMPLE = 'The quick brown fox'
+
+export function FontPicker({
+  value,
+  onChange,
+  ariaLabel = 'Font',
+}: {
+  value: ProfileFont
+  onChange: (v: ProfileFont) => void
+  ariaLabel?: string
+}) {
+  // Fonts are lazily loaded elsewhere; opening the picker is the one place we
+  // deliberately preload the curated set so each row previews its real face.
+  useEffect(() => {
+    loadAllFonts()
+  }, [])
+
+  return (
+    <div
+      role="listbox"
+      aria-label={ariaLabel}
+      className="max-h-64 space-y-1 overflow-y-auto rounded-xl border bg-muted/20 p-1"
+    >
+      {FONT_OPTIONS.map((f) => {
+        const active = f.value === value
+        return (
+          <button
+            key={f.value}
+            type="button"
+            role="option"
+            aria-selected={active}
+            onClick={() => onChange(f.value)}
+            style={{ fontFamily: f.stack }}
+            className={`block w-full rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              active ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-accent'
+            }`}
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-medium">{f.label}</span>
+              {active && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+            </span>
+            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+              {FONT_SAMPLE}
+            </span>
           </button>
         )
       })}

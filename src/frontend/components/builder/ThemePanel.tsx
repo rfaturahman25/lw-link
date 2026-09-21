@@ -15,7 +15,6 @@ import type {
   ContentWidth,
   NameTreatment,
   ProfileAlign,
-  ProfileFont,
   ProfileHeaderStyle,
   ProfileTheme,
   SocialIconStyle,
@@ -24,13 +23,14 @@ import type {
   ThemeCategory,
   ThemeOverrides,
 } from '../../themes'
-import { ColorField, Disclosure, Field, OptionCards, Segmented, Slider } from './controls'
+import { ColorField, Disclosure, Field, FontPicker, OptionCards, Segmented, Slider } from './controls'
 
+// The retired `shape` ("framed avatar") header style is intentionally absent:
+// avatar shape has a single source of truth in the Profile section below.
 const HEADER_STYLES: { value: ProfileHeaderStyle; label: string; desc: string }[] = [
   { value: 'classic', label: 'Classic', desc: 'Avatar on top' },
   { value: 'hero', label: 'Hero', desc: 'Banner behind' },
   { value: 'banner', label: 'Banner', desc: 'Banner above' },
-  { value: 'shape', label: 'Shape', desc: 'Framed avatar' },
 ]
 
 const AVATAR_SHAPES: { value: AvatarShape; label: string }[] = [
@@ -171,9 +171,20 @@ type Props = {
   onChange: (config: StoredThemeConfig) => void
   headerStyle: ProfileHeaderStyle
   onHeaderStyleChange: (h: ProfileHeaderStyle) => void
+  /** Whether the profile has at least one enabled social link. */
+  hasSocials: boolean
+  /** Jump to the existing Social & contact editor. */
+  onConfigureSocials: () => void
 }
 
-export default function ThemePanel({ config, onChange, headerStyle, onHeaderStyleChange }: Props) {
+export default function ThemePanel({
+  config,
+  onChange,
+  headerStyle,
+  onHeaderStyleChange,
+  hasSocials,
+  onConfigureSocials,
+}: Props) {
   const [category, setCategory] = useState<CategoryFilter>('all')
 
   const base = getThemeById(config.themeId) ?? THEMES[0]
@@ -246,24 +257,17 @@ export default function ThemePanel({ config, onChange, headerStyle, onHeaderStyl
         </div>
       </div>
 
-      <Disclosure title="Typography" defaultOpen badge={
+      <Disclosure title="Typography" badge={
         <span className="text-[10px] font-medium text-muted-foreground">
           {FONT_OPTIONS.find((f) => f.value === resolvedFont)?.label ?? 'Inter'}
         </span>
       }>
-        <Field label="Font" htmlFor="builder-font">
-          <select
-            id="builder-font"
+        <Field label="Font">
+          <FontPicker
             value={resolvedFont}
-            onChange={(e) => updateOverride({ fontFamily: e.target.value as ProfileFont })}
-            className="input h-10"
-          >
-            {FONT_OPTIONS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => updateOverride({ fontFamily: v })}
+            ariaLabel="Profile font"
+          />
         </Field>
         <Slider
           label="Type scale"
@@ -331,6 +335,10 @@ export default function ThemePanel({ config, onChange, headerStyle, onHeaderStyl
           onChange={(v) => updateOverride({ cardColor: v })}
           onReset={() => clearOverride('cardColor')}
         />
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Applies to the link cards and card surfaces only. The avatar and social icons keep
+          their own colours.
+        </p>
       </Disclosure>
 
       <Disclosure title="Colours" badge={
@@ -425,10 +433,18 @@ export default function ThemePanel({ config, onChange, headerStyle, onHeaderStyl
         </Field>
       </Disclosure>
 
-      <Disclosure title="Social icons">
+      <Disclosure title="Social icons" badge={
+        <span className="text-[10px] font-medium text-muted-foreground">
+          {hasSocials
+            ? (SOCIAL_ICON_STYLES.find((s) => s.value === (config.socialIconStyle ?? 'surface'))
+                ?.label ?? 'Surface')
+            : 'None'}
+        </span>
+      }>
         <Field label="Icon style">
           <Segmented<SocialIconStyle>
             ariaLabel="Social icon style"
+            disabled={!hasSocials}
             value={config.socialIconStyle ?? 'surface'}
             onChange={(v) =>
               setConfig({ socialIconStyle: v, socialStyle: v === 'plain' ? 'plain' : 'circle' })
@@ -436,6 +452,20 @@ export default function ThemePanel({ config, onChange, headerStyle, onHeaderStyl
             options={SOCIAL_ICON_STYLES}
           />
         </Field>
+        {!hasSocials && (
+          <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/30 p-3">
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              No social icons configured. Add at least one social link to customise this setting.
+            </p>
+            <button
+              type="button"
+              onClick={onConfigureSocials}
+              className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Add social link
+            </button>
+          </div>
+        )}
       </Disclosure>
     </div>
   )

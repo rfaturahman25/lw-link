@@ -1,18 +1,18 @@
-import { Palette, Search, Pencil, X } from 'lucide-react'
+import { Palette, Pencil, X } from 'lucide-react'
 import type { ProfileDraft } from '../../hooks/useProfileDraft'
 import type { ProfileHeaderStyle, StoredThemeConfig } from '../../themes'
 import type { SocialDraft } from '../profile/socialMeta'
 import type { BuilderLink } from './types'
 import ThemePanel from './ThemePanel'
 import ContentPanel from './ContentPanel'
-import SeoPanel from './SeoPanel'
 
-export type BuilderTab = 'theme' | 'content' | 'seo'
+// The SEO tab is intentionally hidden for now. `SeoPanel` and the backend SEO
+// support remain in place so it can be restored without data changes.
+export type BuilderTab = 'theme' | 'content'
 
 const TABS: { id: BuilderTab; label: string; Icon: typeof Palette }[] = [
   { id: 'theme', label: 'Theme', Icon: Palette },
   { id: 'content', label: 'Content', Icon: Pencil },
-  { id: 'seo', label: 'SEO', Icon: Search },
 ]
 
 type Props = {
@@ -32,8 +32,9 @@ type Props = {
   setSocials: (items: SocialDraft[]) => void
   links: BuilderLink[]
   onManageLinks: () => void
-  displayName: string
-  profileUrl: string
+  /** Opens the Content tab with the Social & contact section expanded. */
+  onConfigureSocials: () => void
+  openSocial: boolean
 }
 
 export default function BuilderSettingsPanel({
@@ -53,10 +54,12 @@ export default function BuilderSettingsPanel({
   setSocials,
   links,
   onManageLinks,
-  displayName,
-  profileUrl,
+  onConfigureSocials,
+  openSocial,
 }: Props) {
   if (!open) return null
+
+  const hasSocials = draft.socials.some((s) => s.enabled && s.value.trim().length > 0)
 
   const body = (
     <>
@@ -114,6 +117,8 @@ export default function BuilderSettingsPanel({
               onChange={onConfigChange}
               headerStyle={headerStyle}
               onHeaderStyleChange={onHeaderStyleChange}
+              hasSocials={hasSocials}
+              onConfigureSocials={onConfigureSocials}
             />
           )}
           {tab === 'content' && (
@@ -125,14 +130,7 @@ export default function BuilderSettingsPanel({
               setSocials={setSocials}
               links={links}
               onManageLinks={onManageLinks}
-            />
-          )}
-          {tab === 'seo' && (
-            <SeoPanel
-              config={config}
-              onChange={onConfigChange}
-              displayName={displayName}
-              profileUrl={profileUrl}
+              openSocial={openSocial}
             />
           )}
         </div>

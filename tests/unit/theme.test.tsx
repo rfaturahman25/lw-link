@@ -12,6 +12,7 @@ import {
   themeToCssVars,
   toDraftConfig,
 } from '@frontend/themes'
+import type { AvatarShape, ContentWidth } from '@frontend/themes'
 
 const LEGACY_PALETTES = [
   'ocean',
@@ -144,7 +145,7 @@ describe('theme layout options', () => {
     expect(t.layout.contentWidth).toBe('wide')
     expect(t.layout.align).toBe('left')
     const vars = themeToCssVars(t) as Record<string, string>
-    expect(vars['--pp-content-width']).toBe('520px')
+    expect(vars['--pp-content-width']).toBe('560px')
     expect(vars['--pp-avatar-radius']).toBe('0px')
     expect(vars['--pp-name-gradient']).toContain('linear-gradient')
     expect(vars['--pp-align']).toBe('left')
@@ -290,5 +291,66 @@ describe('PublicProfileView', () => {
     )
     expect(screen.getAllByText('Featured')).toHaveLength(1)
     expect(screen.getByText('Normal')).toBeInTheDocument()
+  })
+
+  it('renders the Lensawaktu copyright beneath the branding footer', () => {
+    render(
+      <PublicProfileView
+        displayName="Jane Doe"
+        links={[]}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+      />
+    )
+    expect(screen.getByText('Lensa Links')).toBeInTheDocument()
+    expect(
+      screen.getByText(`© ${new Date().getFullYear()} Lensawaktu. All rights reserved.`)
+    ).toBeInTheDocument()
+  })
+
+  it('fills the embedded builder preview so the background never stops early', () => {
+    const { container } = render(
+      <PublicProfileView
+        variant="embedded"
+        displayName="Jane Doe"
+        links={[]}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+      />
+    )
+    const root = container.querySelector('.pp-root')
+    expect(root?.className).toContain('min-h-full')
+  })
+})
+
+describe('builder control tokens', () => {
+  const vars = (config: Parameters<typeof resolveTheme>[0]) =>
+    themeToCssVars(resolveTheme(config)) as Record<string, string>
+
+  it('scopes Card colour to cards and link cards, never the avatar or socials', () => {
+    const base = vars({ themeId: 'mesh' })
+    const overridden = vars({ themeId: 'mesh', overrides: { cardColor: '#ff0000' } })
+    // Link cards and card surfaces follow the override…
+    expect(overridden['--pp-link-bg']).toMatch(/^rgba\(255, 0, 0/)
+    expect(overridden['--pp-card']).toMatch(/^rgba\(255, 0, 0/)
+    // …while the avatar container and social buttons keep their preset surface.
+    expect(overridden['--pp-avatar-bg']).toBe(base['--pp-avatar-bg'])
+    expect(overridden['--pp-social-bg']).toBe(base['--pp-social-bg'])
+    expect(overridden['--pp-avatar-bg']).not.toMatch(/255, 0, 0/)
+  })
+
+  it('gives every avatar shape a distinct radius', () => {
+    const shapes: AvatarShape[] = ['circle', 'rounded', 'squircle', 'square', 'hex']
+    const radii = shapes.map((avatarShape) => vars({ themeId: 'mesh', avatarShape })['--pp-avatar-radius'])
+    expect(new Set(radii).size).toBe(shapes.length)
+  })
+
+  it('makes the content width options visibly different', () => {
+    const widths: ContentWidth[] = ['compact', 'cozy', 'wide']
+    expect(widths.map((contentWidth) => vars({ themeId: 'mesh', contentWidth })['--pp-content-width'])).toEqual([
+      '300px',
+      '440px',
+      '560px',
+    ])
   })
 })

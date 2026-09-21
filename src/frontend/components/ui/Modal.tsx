@@ -1,9 +1,12 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+// Must match the exit animation duration in globals.css (`.modal-panel-out`).
+const EXIT_MS = 220
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -37,6 +40,25 @@ export default function Modal({
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  // `rendered` keeps the panel mounted for the exit animation; `closing` flips
+  // it to the out-animation so open and close both feel intentional.
+  const [rendered, setRendered] = useState(open)
+  const [closing, setClosing] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setRendered(true)
+      setClosing(false)
+      return
+    }
+    if (!rendered) return
+    setClosing(true)
+    const timer = window.setTimeout(() => {
+      setRendered(false)
+      setClosing(false)
+    }, EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, rendered])
 
   // Scroll lock + Escape. Escape is bound on the document so it also works when
   // focus is not inside the panel.
@@ -72,7 +94,7 @@ export default function Modal({
     }
   }, [open])
 
-  if (!open) return null
+  if (!rendered) return null
 
   const onPanelKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Tab') return
@@ -100,9 +122,11 @@ export default function Modal({
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center">
       <div
-        className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+        className={`absolute inset-0 bg-slate-950/50 backdrop-blur-sm ${
+          closing ? 'modal-overlay-out' : 'modal-overlay-in'
+        }`}
         onClick={() => {
-          if (!busy) onClose()
+          if (!busy && !closing) onClose()
         }}
         aria-hidden="true"
       />
@@ -113,7 +137,9 @@ export default function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={onPanelKeyDown}
-        className={`sheet-in relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border bg-card text-card-foreground shadow-2xl outline-none sm:max-h-[88dvh] sm:w-full sm:rounded-2xl ${SIZE_CLASS[size]}`}
+        className={`modal-panel-motion ${
+          closing ? 'modal-panel-out' : 'modal-panel-in'
+        } relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border bg-card text-card-foreground shadow-2xl outline-none sm:max-h-[88dvh] sm:w-full sm:rounded-2xl ${SIZE_CLASS[size]}`}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-4 border-b px-5 py-4">

@@ -48,8 +48,11 @@ type Options = {
   reload: () => Promise<void>
 }
 
+// `shape` (the retired "framed avatar" header style) is folded back into
+// `classic` so old saved configs keep working without a duplicate avatar-shape
+// control. The Avatar Shape setting is now the only source of truth.
 function toHeaderStyle(v: string | null | undefined): HeaderStyle {
-  return v === 'hero' || v === 'banner' || v === 'shape' ? v : 'classic'
+  return v === 'hero' || v === 'banner' ? v : 'classic'
 }
 
 function emptyDraft(): ProfileDraft {

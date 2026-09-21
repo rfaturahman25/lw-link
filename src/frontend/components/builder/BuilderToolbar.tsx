@@ -6,7 +6,6 @@ import {
   Palette,
   RotateCcw,
   Save,
-  Search,
   Pencil,
 } from 'lucide-react'
 import type { BuilderTab } from './BuilderSettingsPanel'
@@ -27,7 +26,6 @@ type Props = {
 const TABS: { id: BuilderTab; label: string; Icon: typeof Palette }[] = [
   { id: 'theme', label: 'Theme', Icon: Palette },
   { id: 'content', label: 'Content', Icon: Pencil },
-  { id: 'seo', label: 'SEO', Icon: Search },
 ]
 
 function ToolButton({

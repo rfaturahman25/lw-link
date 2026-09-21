@@ -245,7 +245,12 @@ export function resolveTheme(
     getThemeById(legacy?.colorPalette) ||
     THEME_MAP[DEFAULT_THEME_ID]
   const overrides = config ? config.overrides || {} : legacyOverrides(legacy)
-  return { ...applyOverrides(base, overrides), layout: resolveLayout(config) }
+  return {
+    ...applyOverrides(base, overrides),
+    layout: resolveLayout(config),
+    overrides,
+    baseColors: base.colors,
+  }
 }
 
 export function resolveProfileTheme(
@@ -351,10 +356,14 @@ function hoverVars(theme: ProfileTheme): { lift: string; scale: string; shadow: 
   }
 }
 
+// Content column widths. The range is deliberately wide so S/M/L are visibly
+// different: `compact` is narrower than a phone screen (so the effect shows even
+// in the mobile preview), `cozy` is edge-to-edge on phones, `wide` is roomy on
+// desktop. The builder canvas itself never resizes — only this column does.
 const CONTENT_WIDTH_PX: Record<ContentWidth, string> = {
-  compact: '400px',
-  cozy: '460px',
-  wide: '520px',
+  compact: '300px',
+  cozy: '440px',
+  wide: '560px',
 }
 
 const GAP_REM: Record<ContentDensity, string> = {
@@ -393,18 +402,29 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
   const outlined = theme.button.shape === 'outlined'
   const elevated = theme.button.shape === 'elevated'
   const card = hexToRgba(c.card, c.cardOpacity)
+  // The preset surface, before any user override. Surfaces that must NOT follow
+  // the "Card colour" control (the avatar container, the social buttons) read
+  // this instead of `--pp-card`, so tweaking cards never repaints the avatar.
+  const baseCard = hexToRgba(theme.baseColors.card, theme.baseColors.cardOpacity)
+  // "Card colour" is the link/card surface. When the owner sets it, link cards
+  // adopt it and their text switches to the theme text colour so it stays
+  // legible on the chosen surface. Without an override, link cards keep the
+  // preset's button surface (the high-contrast default).
+  const cardOverride = theme.overrides.cardColor
+  const linkSurface = cardOverride ? card : c.button
+  const linkText = cardOverride ? c.text : c.buttonText
   // Link cards are the primary "buttons" on a link-in-bio, so the button shape
   // (radius / outlined / elevated) must be reflected on them too.
   const link = {
-    bg: outlined ? 'transparent' : c.button,
-    text: outlined ? c.accent : c.buttonText,
-    secondary: outlined ? c.textSecondary : hexToRgba(c.buttonText, 0.72),
+    bg: outlined ? 'transparent' : linkSurface,
+    text: outlined ? c.accent : linkText,
+    secondary: outlined ? c.textSecondary : hexToRgba(linkText, 0.72),
     border: outlined ? c.accent : theme.effects.border,
     borderWidth: outlined ? '1.5px' : '1px',
     radius: btn.radius,
     shadow: elevated ? btn.shadow : outlined ? 'none' : theme.effects.shadow,
-    iconBg: outlined ? hexToRgba(c.accent, 0.14) : hexToRgba(c.buttonText, 0.16),
-    iconColor: outlined ? c.accent : c.buttonText,
+    iconBg: outlined ? hexToRgba(c.accent, 0.14) : hexToRgba(linkText, 0.16),
+    iconColor: outlined ? c.accent : linkText,
   }
   const hoverBorder = outlined
     ? c.accent
@@ -413,7 +433,7 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
       : 'rgba(15,23,42,0.16)'
   const socialSurface =
     layout.socialIconStyle === 'surface'
-      ? c.card
+      ? baseCard
       : layout.socialIconStyle === 'tinted'
         ? hexToRgba(c.accent, 0.14)
         : 'transparent'
@@ -466,6 +486,9 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     '--pp-type-scale': String(layout.typeScale),
     '--pp-avatar-size': AVATAR_SIZE_PX[layout.avatarSize],
     '--pp-avatar-radius': AVATAR_RADIUS[layout.avatarShape],
+    // Avatar container surface: preset card, deliberately independent of the
+    // "Card colour" override so the avatar never repaints with the cards.
+    '--pp-avatar-bg': baseCard,
     '--pp-avatar-ring': hexToRgba(c.accent, 0.55),
     '--pp-avatar-ring-width': layout.avatarRing ? '3px' : '0px',
     '--pp-avatar-shadow': theme.isDark

@@ -86,7 +86,10 @@ export default function PublicProfileView({
 
   return (
     <div
-      className={`pp-root w-full ${embedded ? '' : 'min-h-[100dvh] min-h-screen'}`}
+      // The page fills the viewport; the embedded builder preview fills its
+      // device frame instead, so the themed background never stops early when
+      // the profile has few links.
+      className={`pp-root w-full ${embedded ? 'min-h-full' : 'min-h-[100dvh] min-h-screen'}`}
       style={themeToCssVars(theme)}
     >
       <div
@@ -159,14 +162,22 @@ export default function PublicProfileView({
 
         {showShare && <ShareCard profileUrl={profileUrl} embedded={embedded} />}
 
-        {footerText && (
+        <footer className="space-y-1 pt-2 text-center">
+          {footerText && (
+            <p
+              className="text-[11px] tracking-wide"
+              style={{ color: 'var(--pp-text-secondary)', opacity: 0.6 }}
+            >
+              {footerText}
+            </p>
+          )}
           <p
-            className="text-center text-[11px] tracking-wide"
-            style={{ color: 'var(--pp-text-secondary)', opacity: 0.6 }}
+            className="text-[10px] tracking-wide"
+            style={{ color: 'var(--pp-text-secondary)', opacity: 0.45 }}
           >
-            {footerText}
+            © {new Date().getFullYear()} Lensawaktu. All rights reserved.
           </p>
-        )}
+        </footer>
       </div>
     </div>
   )

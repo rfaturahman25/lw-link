@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import Modal from '@frontend/components/ui/Modal'
 
 describe('Modal', () => {
@@ -65,5 +65,32 @@ describe('Modal', () => {
     )
     expect(document.activeElement).toBe(trigger)
     trigger.remove()
+  })
+
+  it('plays an exit animation before unmounting', () => {
+    vi.useFakeTimers()
+    try {
+      const { rerender } = render(
+        <Modal open onClose={() => {}} title="T">
+          x
+        </Modal>
+      )
+      expect(screen.getByRole('dialog').className).toContain('modal-panel-in')
+
+      rerender(
+        <Modal open={false} onClose={() => {}} title="T">
+          x
+        </Modal>
+      )
+      // Still mounted, now running the out-animation.
+      expect(screen.getByRole('dialog').className).toContain('modal-panel-out')
+
+      act(() => {
+        vi.advanceTimersByTime(400)
+      })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

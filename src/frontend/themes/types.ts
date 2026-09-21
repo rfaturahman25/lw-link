@@ -150,4 +150,12 @@ export type ResolvedSeo = {
 }
 
 // A preset theme plus the resolved layout. The renderer only ever needs this.
-export type ResolvedTheme = ProfileTheme & { layout: ResolvedLayout }
+// `overrides` and `baseColors` are carried along so the CSS-variable builder can
+// branch on a user override without duplicating the resolution logic, and so
+// surfaces that must stay stable (avatar container, social buttons) can read the
+// untouched preset colours instead of the overridden ones.
+export type ResolvedTheme = ProfileTheme & {
+  layout: ResolvedLayout
+  overrides: ThemeOverrides
+  baseColors: ThemeColors
+}

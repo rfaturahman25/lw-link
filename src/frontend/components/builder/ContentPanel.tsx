@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Upload, X } from 'lucide-react'
+import { AlertTriangle, Upload } from 'lucide-react'
 import { api } from '../../services/api'
 import { useAuth } from '../../hooks/useAuth'
 import type { ProfileDraft } from '../../hooks/useProfileDraft'
@@ -17,6 +17,8 @@ type Props = {
   setSocials: (items: SocialDraft[]) => void
   links: BuilderLink[]
   onManageLinks: () => void
+  /** Expand the Social & contact section on mount (used by the Theme tab CTA). */
+  openSocial?: boolean
 }
 
 /* Username is a separate account-level field with its own endpoint, so it keeps
@@ -101,10 +103,23 @@ export default function ContentPanel({
   setSocials,
   links,
   onManageLinks,
+  openSocial = false,
 }: Props) {
   const [uploading, setUploading] = useState<'logoUrl' | 'bannerUrl' | null>(null)
   const [uploadError, setUploadError] = useState('')
   const featuredCandidates = links.filter((l) => l.enabled && l.thumbnail)
+
+  const togglePublished = () => {
+    if (
+      draft.published &&
+      !confirm(
+        'Unpublish your profile? It will be hidden from the public until you publish again.'
+      )
+    ) {
+      return
+    }
+    patch({ published: !draft.published })
+  }
 
   const upload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -127,6 +142,52 @@ export default function ContentPanel({
 
   return (
     <div className="space-y-4">
+      {/* Publishing is the single most consequential control, so it gets its own
+          prominent status card instead of an ordinary checkbox. */}
+      <div
+        className={`rounded-xl border p-3 ${
+          draft.published ? 'border-green-500/40 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'
+        }`}
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Public page
+        </p>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-sm font-semibold">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  draft.published ? 'bg-green-500' : 'bg-amber-500'
+                }`}
+                aria-hidden="true"
+              />
+              {draft.published ? 'Published' : 'Unpublished'}
+            </p>
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+              {draft.published
+                ? 'Your profile is visible on your public page.'
+                : 'Your profile is currently hidden from the public.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={draft.published}
+            aria-label={draft.published ? 'Unpublish profile' : 'Publish profile'}
+            onClick={togglePublished}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              draft.published ? 'bg-green-500' : 'bg-muted-foreground/40'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                draft.published ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
       <Disclosure title="Identity" defaultOpen>
         <Field label="Display name" htmlFor="builder-name">
           <input
@@ -146,22 +207,20 @@ export default function ContentPanel({
             className="input h-auto py-2"
           />
         </Field>
-        <Field label="Logo / avatar" hint="Used as the profile picture.">
+        <Field label="Profile image" hint="Upload a JPG, PNG or WebP. Used as the profile picture.">
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
-              <input
-                value={draft.logoUrl ?? ''}
-                onChange={(e) => patch({ logoUrl: e.target.value || null })}
-                placeholder="https://... or upload"
-                className="input h-9 min-w-[140px] flex-1"
-              />
               <label
-                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-xs ${
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-xs ${
                   uploading === 'logoUrl' ? 'opacity-50' : 'hover:bg-accent'
                 }`}
               >
                 <Upload className="h-3.5 w-3.5" />
-                {uploading === 'logoUrl' ? 'Uploading…' : 'Upload'}
+                {uploading === 'logoUrl'
+                  ? 'Uploading…'
+                  : draft.logoUrl
+                    ? 'Replace image'
+                    : 'Upload image'}
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/gif"
@@ -170,10 +229,20 @@ export default function ContentPanel({
                   onChange={(e) => upload(e, 'logoUrl')}
                 />
               </label>
+              {draft.logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => patch({ logoUrl: null })}
+                  className="rounded-lg border px-3 py-2 text-xs text-red-600 hover:bg-accent"
+                >
+                  Remove
+                </button>
+              )}
             </div>
+            <p className="text-[11px] text-muted-foreground">Supported formats: JPG, PNG, WebP.</p>
             {draft.logoUrl && (
               <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-2">
-                <img src={draft.logoUrl} alt="Logo preview" className="h-10 w-10 object-contain" />
+                <img src={draft.logoUrl} alt="Profile image preview" className="h-10 w-10 object-contain" />
                 <div className="flex-1">
                   <p className="text-[11px] font-medium">Logo shape</p>
                   <div className="mt-1 flex gap-1.5">
@@ -193,15 +262,12 @@ export default function ContentPanel({
                       </button>
                     ))}
                   </div>
+                  {(draft.themeConfig.logoShape ?? 'circle') === 'plain' && (
+                    <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                      Plain renders the logo without a container and ignores the Avatar shape.
+                    </p>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => patch({ logoUrl: null })}
-                  aria-label="Remove logo"
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-red-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             )}
           </div>
@@ -246,15 +312,6 @@ export default function ContentPanel({
         {uploadError && <p className="text-[11px] text-red-600">{uploadError}</p>}
 
         <UsernameField />
-
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={draft.published}
-            onChange={(e) => patch({ published: e.target.checked })}
-          />
-          Published (visible on your public page)
-        </label>
       </Disclosure>
 
       <Disclosure title="Links" defaultOpen badge={
@@ -273,7 +330,7 @@ export default function ContentPanel({
         </button>
         <Field
           label="Featured link"
-          hint="Promotes one link with a thumbnail into a large tile at the top."
+          hint="Promotes one link with a thumbnail into a large tile at the top. You can also star a link in the Links workspace."
           htmlFor="builder-featured"
         >
           <select
@@ -291,11 +348,22 @@ export default function ContentPanel({
             ))}
           </select>
         </Field>
+        {featuredCandidates.length === 0 && (
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            No link has a thumbnail yet. Add a thumbnail to a link to make it featureable.
+          </p>
+        )}
       </Disclosure>
 
-      <Disclosure title="Social & contact" badge={
-        <span className="text-[10px] font-medium text-muted-foreground">{draft.socials.length}</span>
-      }>
+      <Disclosure
+        title="Social & contact"
+        defaultOpen={openSocial}
+        badge={
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {draft.socials.length}
+          </span>
+        }
+      >
         <SocialsEditor items={draft.socials} errors={socialErrors} onChange={setSocials} />
       </Disclosure>
 

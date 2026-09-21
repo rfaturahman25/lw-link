@@ -15,7 +15,7 @@ import LinksManager from '../links/LinksManager'
 
 type SocialLike = { platform: string; value: string; enabled: boolean; position: number }
 
-const TAB_ORDER: BuilderTab[] = ['theme', 'content', 'seo']
+const TAB_ORDER: BuilderTab[] = ['theme', 'content']
 
 type Props = {
   profile: Parameters<typeof useProfileDraft>[0]['profile']
@@ -53,6 +53,7 @@ export default function VisualBuilder({
   const [panelOpen, setPanelOpen] = useState(isDesktop)
   const [tab, setTab] = useState<BuilderTab>('theme')
   const [tabDir, setTabDir] = useState<1 | -1>(1)
+  const [openSocial, setOpenSocial] = useState(false)
   const [device, setDevice] = useState<BuilderDevice>('mobile')
   const [mode, setMode] = useState<BuilderMode>(initialMode)
 
@@ -61,7 +62,16 @@ export default function VisualBuilder({
   const changeTab = (next: BuilderTab) => {
     if (next === tab) return
     setTabDir(TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 1 : -1)
+    setOpenSocial(false)
     setTab(next)
+  }
+
+  // "Add social link" from the Theme tab lands directly on the Social & contact
+  // editor inside the Content tab.
+  const configureSocials = () => {
+    changeTab('content')
+    setOpenSocial(true)
+    setPanelOpen(true)
   }
 
   const switchMode = (next: BuilderMode) => {
@@ -253,7 +263,15 @@ export default function VisualBuilder({
             ) : (
               <div className="thin-scroll h-full w-full overflow-y-auto overscroll-contain">
                 <div className="mx-auto w-full max-w-3xl px-4 pb-32 pt-6 sm:px-6">
-                  <LinksManager embedded />
+                  <LinksManager
+                    embedded
+                    featuredLinkId={form.themeConfig.featuredLinkId ?? null}
+                    onSetFeatured={(id) =>
+                      patch({
+                        themeConfig: { ...form.themeConfig, featuredLinkId: id },
+                      })
+                    }
+                  />
                 </div>
               </div>
             )}
@@ -278,8 +296,8 @@ export default function VisualBuilder({
             setSocials={setSocials}
             links={links}
             onManageLinks={() => switchMode('links')}
-            displayName={form.displayName}
-            profileUrl={profileUrl}
+            onConfigureSocials={configureSocials}
+            openSocial={openSocial}
           />
         )}
 

@@ -47,6 +47,26 @@ sectionsRoutes.post('/', requirePermission(PERMISSIONS.LINK_CREATE), zValidator(
   return c.json({ success: true, data: rows[0] }, 201)
 })
 
+// PUT /sections/reorder - reorder sections
+// NOTE: must be registered before `/sections/:id` — Hono matches routes in
+// registration order, so a later `/reorder` would be captured by `:id` and
+// answered with 404 (which made every section drag snap back).
+sectionsRoutes.put('/reorder', requirePermission(PERMISSIONS.LINK_UPDATE), zValidator('json', reorderSchema), async (c) => {
+  const user = c.get('user') as AuthUser
+  const { orderedIds } = c.req.valid('json')
+  const db = createDb(c.env.DB)
+  const owned = await db.select().from(sections).where(eq(sections.userId, user.id))
+  const ownedIds = new Set(owned.map((s) => s.id))
+  for (const sid of orderedIds) {
+    if (!ownedIds.has(sid)) return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Invalid section id' } }, 403)
+  }
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(sections).set({ position: i + 1, updatedAt: new Date().toISOString() }).where(eq(sections.id, orderedIds[i]))
+  }
+  const rows = await db.select().from(sections).where(eq(sections.userId, user.id)).orderBy(asc(sections.position))
+  return c.json({ success: true, data: rows })
+})
+
 // PUT /sections/:id - update title
 sectionsRoutes.put('/:id', requirePermission(PERMISSIONS.LINK_UPDATE), zValidator('json', sectionUpdateSchema), async (c) => {
   const user = c.get('user') as AuthUser
@@ -73,21 +93,6 @@ sectionsRoutes.delete('/:id', requirePermission(PERMISSIONS.LINK_DELETE), async 
   return c.json({ success: true })
 })
 
-// PUT /sections/reorder - reorder sections
-sectionsRoutes.put('/reorder', requirePermission(PERMISSIONS.LINK_UPDATE), zValidator('json', reorderSchema), async (c) => {
-  const user = c.get('user') as AuthUser
-  const { orderedIds } = c.req.valid('json')
-  const db = createDb(c.env.DB)
-  const owned = await db.select().from(sections).where(eq(sections.userId, user.id))
-  const ownedIds = new Set(owned.map((s) => s.id))
-  for (const sid of orderedIds) {
-    if (!ownedIds.has(sid)) return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Invalid section id' } }, 403)
-  }
-  for (let i = 0; i < orderedIds.length; i++) {
-    await db.update(sections).set({ position: i + 1, updatedAt: new Date().toISOString() }).where(eq(sections.id, orderedIds[i]))
-  }
-  const rows = await db.select().from(sections).where(eq(sections.userId, user.id)).orderBy(asc(sections.position))
-  return c.json({ success: true, data: rows })
-})
+// PUT /sections/reorder is registered above, before `/sections/:id`.
 
 export default sectionsRoutes
