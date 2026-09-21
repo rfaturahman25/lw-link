@@ -9,6 +9,7 @@ export type BuilderLink = {
   url: string
   icon: string | null
   align?: string | null
+  bold?: boolean | null
   type?: string | null
   metadata?: string | null
   showUrl?: boolean | null

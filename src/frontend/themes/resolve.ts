@@ -547,6 +547,14 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     '--pp-social-bg': socialSurface,
     '--pp-social-color': socialColor,
     '--pp-social-border': socialBorder,
+    // Desktop shell: a translucent panel that wraps the whole profile so the
+    // wide-screen composition reads as a designed surface, not a bare page.
+    '--pp-shell-bg': theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.55)',
+    '--pp-shell-border': theme.effects.border,
+    '--pp-shell-radius': '1.5rem',
+    '--pp-shell-shadow': theme.isDark
+      ? '0 24px 60px rgba(0,0,0,0.45)'
+      : '0 24px 60px rgba(15,23,42,0.14)',
     '--pp-featured-radius': theme.effects.cardRadius || '1rem',
     '--pp-featured-shadow': theme.effects.shadow,
     '--pp-align': layout.align === 'left' ? 'left' : 'center',

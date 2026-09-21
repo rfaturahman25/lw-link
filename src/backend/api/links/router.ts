@@ -56,7 +56,8 @@ linksRoutes.post('/', zValidator('json', linkCreateSchema), async (c) => {
     thumbnail: body.thumbnail || null,
     enabled: body.enabled ?? true,
     showUrl: body.showUrl ?? true,
-    align: body.align ?? 'left',
+    align: body.align ?? 'center',
+    bold: body.bold ?? false,
     position: maxPos + 1,
     sectionId: body.sectionId || null,
   })

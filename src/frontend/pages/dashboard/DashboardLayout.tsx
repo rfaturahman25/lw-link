@@ -37,6 +37,7 @@ type LinkItem = {
   type?: string | null
   metadata?: string | null
   showUrl?: boolean | null
+  bold?: boolean | null
   thumbnail?: string | null
   position: number
   enabled: boolean

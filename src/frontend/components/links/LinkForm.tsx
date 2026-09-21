@@ -190,6 +190,17 @@ export default function LinkForm({
         Show URL on the profile
       </label>
 
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={values.bold}
+            onChange={(e) => onChange({ bold: e.target.checked })}
+          />
+          Bold title
+        </label>
+      </div>
+
       <div className="space-y-2">
         <label htmlFor={`${formId}-thumb`} className="text-sm font-medium">
           Thumbnail (optional)

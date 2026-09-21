@@ -5,6 +5,7 @@ export type LinkFormValues = {
   url: string
   icon: string
   align: 'left' | 'center' | 'right'
+  bold: boolean
   sectionId: string
   showLocation: boolean
   showUrl: boolean
@@ -30,6 +31,7 @@ export type LinkFormLink = {
   url: string
   icon: string | null
   align?: string | null
+  bold?: boolean | null
   type?: string | null
   metadata?: string | null
   showUrl?: boolean | null
@@ -46,6 +48,7 @@ export function emptyLinkForm(): LinkFormValues {
     icon: 'link',
     // New links default to centred text, matching the public profile's default look.
     align: 'center',
+    bold: false,
     sectionId: '',
     showLocation: true,
     showUrl: true,
@@ -59,6 +62,7 @@ export function linkFormFromLink(link: LinkFormLink): LinkFormValues {
     url: link.url,
     icon: link.icon || 'link',
     align: (link.align as LinkFormValues['align']) || 'left',
+    bold: link.bold === true,
     sectionId: link.sectionId || '',
     showLocation: parseSmartMetadata(link)?.showLocation ?? true,
     showUrl: link.showUrl !== false,

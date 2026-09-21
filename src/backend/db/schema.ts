@@ -97,6 +97,7 @@ export const links = sqliteTable('links', {
   align: text('align', { enum: ['left', 'center', 'right'] })
     .notNull()
     .default('left'),
+  bold: integer('bold', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 })

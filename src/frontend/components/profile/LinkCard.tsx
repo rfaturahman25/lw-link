@@ -13,6 +13,7 @@ export type ProfileViewLink = {
   metadata?: string | null
   showUrl?: boolean | null
   align?: string | null
+  bold?: boolean | null
   thumbnail?: string | null
 }
 
@@ -73,7 +74,7 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
       )}
       <div className={`min-w-0 flex-1 ${align}`}>
         <p
-          className="pp-link-title font-semibold leading-tight"
+          className={`pp-link-title leading-tight ${link.bold ? 'font-bold' : 'font-semibold'}`}
           style={{ color: 'var(--pp-link-text)' }}
         >
           {link.title}
@@ -92,6 +93,12 @@ export default function LinkCard({ link, interactive = false, onLinkClick }: Pro
           </p>
         ) : null}
       </div>
+      {/* Centred text must be centred in the *card*, not in the space left over
+          after the icon. This invisible spacer mirrors the icon so the text
+          column stays symmetric — without ever colliding with the icon. */}
+      {showIcon && link.align === 'center' && (
+        <span className="h-10 w-10 shrink-0" aria-hidden="true" />
+      )}
     </a>
   )
 }

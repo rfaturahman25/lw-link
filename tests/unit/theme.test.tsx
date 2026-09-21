@@ -380,6 +380,40 @@ describe('PublicProfileView', () => {
     expect(root?.className).toContain('min-h-full')
   })
 
+  it('wraps the profile in a container shell (desktop card, mobile edge-to-edge)', () => {
+    const { container } = render(
+      <PublicProfileView
+        displayName="Jane"
+        links={[{ id: '1', title: 'Link', url: 'https://example.com', icon: null }]}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+      />
+    )
+    const shell = container.querySelector('.pp-shell')
+    expect(shell).not.toBeNull()
+    // The content column lives inside the shell.
+    expect(shell?.querySelector('.pp-content')).not.toBeNull()
+  })
+
+  it('does not label the unsectioned links block', () => {
+    const { container } = render(
+      <PublicProfileView
+        displayName="Jane"
+        links={[
+          { id: 'n', title: 'Unsorted', url: 'https://example.com/n', icon: null, sectionId: null },
+          { id: 's', title: 'In Section', url: 'https://example.com/s', icon: null, sectionId: 'sec-1' },
+        ]}
+        sections={[{ id: 'sec-1', title: 'Favourites' }]}
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+      />
+    )
+    const labels = Array.from(container.querySelectorAll('.pp-section-label')).map(
+      (el) => el.textContent
+    )
+    expect(labels).toEqual(['Favourites'])
+  })
+
   it('honours the stored group order for the unsectioned block', () => {
     const links = [
       { id: 'n', title: 'Unsorted', url: 'https://example.com/n', icon: null, sectionId: null },

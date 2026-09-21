@@ -384,6 +384,7 @@ export default function LinksManager({
       type?: string | null
       metadata?: string | null
       showUrl?: boolean | null
+      bold?: boolean | null
       thumbnail?: string | null
       enabled: boolean
       sectionId: string | null
@@ -500,6 +501,7 @@ export default function LinksManager({
     if (isMapsUrl(linkForm.url)) payload.showLocation = linkForm.showLocation
     payload.showUrl = linkForm.showUrl
     payload.align = linkForm.align
+    payload.bold = linkForm.bold
     try {
       if (editingId) await api.linkUpdate(editingId, payload)
       else await api.linkCreate(payload)

@@ -121,8 +121,9 @@ export default function PublicProfileView({
       style={themeToCssVars(theme)}
     >
       <div
-        className={`pp-content ${embedded ? '' : 'animate-fade-in motion-reduce:animate-none'}`}
+        className={`pp-shell ${embedded ? '' : 'animate-fade-in motion-reduce:animate-none'}`}
       >
+        <div className="pp-content">
         <div className="space-y-3">
           <IdentityHeader
             displayName={displayName}
@@ -157,11 +158,9 @@ export default function PublicProfileView({
 
           {groups.map((group) => (
             <div key={group.key} className="pp-links-group">
-              {group.section ? (
-                <h2 className="pp-section-label">{group.section.title}</h2>
-              ) : hasSections ? (
-                <h2 className="pp-section-label">Links</h2>
-              ) : null}
+              {/* Only real sections get a label — the unsectioned block is
+                  intentionally unlabelled. */}
+              {group.section && <h2 className="pp-section-label">{group.section.title}</h2>}
               <div className="pp-links-group">
                 {(group.section
                   ? bySection.get(group.section.id) || []
@@ -197,6 +196,7 @@ export default function PublicProfileView({
             © {new Date().getFullYear()} Lensawaktu. All rights reserved.
           </p>
         </footer>
+        </div>
       </div>
     </div>
   )

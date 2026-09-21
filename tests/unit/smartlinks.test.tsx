@@ -252,6 +252,30 @@ describe('PublicProfileView location smart link', () => {
     expect(row?.className).toContain('justify-center')
   })
 
+  it('keeps centred text centred on the card when an icon is present', () => {
+    const { container } = render(
+      <PublicProfileView
+        displayName="Jane"
+        profileUrl="https://example.com/@jane"
+        theme={resolveTheme({ themeId: 'mesh' })}
+        links={[
+          {
+            id: '1',
+            title: 'PRIVATE EVENTS',
+            url: PLACE_URL,
+            icon: 'link',
+            align: 'center',
+            bold: true,
+          },
+        ]}
+      />
+    )
+    const row = container.querySelector('.pp-link') as HTMLElement
+    // Icon + matching invisible spacer keep the text column symmetric.
+    expect(row.querySelectorAll('.h-10')).toHaveLength(2)
+    expect(row.querySelector('.pp-link-title')?.className).toContain('font-bold')
+  })
+
   it('renders no outbound redirect icon on link cards', () => {
     const { container } = render(
       <PublicProfileView

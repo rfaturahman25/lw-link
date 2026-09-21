@@ -45,25 +45,39 @@ type ProfileData = {
   socials?: Array<{ platform: string; value: string }>
 }
 
-// Neutral-but-themed placeholder: uses the default theme tokens so the page
-// never flashes an unrelated gray shell before the profile resolves.
+// Neutral placeholder tokens used while the profile resolves. The default
+// preset's gradient (a pink/indigo mesh) used to flash before the owner's real
+// theme arrived, so the skeleton uses a plain neutral surface instead.
+const PLACEHOLDER_VARS = (() => {
+  const base = resolveTheme(null)
+  return themeToCssVars({
+    ...base,
+    background: { color: '#f4f4f5' },
+    colors: {
+      ...base.colors,
+      card: '#e4e4e7',
+      text: '#a1a1aa',
+      textSecondary: '#d4d4d8',
+    },
+  })
+})()
+
 const LoadingState = () => (
-  <div
-    className="pp-root w-full min-h-[100dvh] min-h-screen"
-    style={themeToCssVars(resolveTheme(null))}
-  >
-    <div className="pp-content animate-pulse motion-reduce:animate-none" aria-busy="true">
-      <div className="space-y-3">
-        <div className="pp-avatar mx-auto" />
-        <div className="mx-auto h-7 w-40 rounded-full" style={{ background: 'var(--pp-card)' }} />
-        <div className="mx-auto h-4 w-56 rounded-full" style={{ background: 'var(--pp-card)' }} />
+  <div className="pp-root w-full min-h-[100dvh] min-h-screen" style={PLACEHOLDER_VARS}>
+    <div className="pp-shell">
+      <div className="pp-content animate-pulse motion-reduce:animate-none" aria-busy="true">
+        <div className="space-y-3">
+          <div className="pp-avatar mx-auto" />
+          <div className="mx-auto h-7 w-40 rounded-full" style={{ background: 'var(--pp-card)' }} />
+          <div className="mx-auto h-4 w-56 rounded-full" style={{ background: 'var(--pp-card)' }} />
+        </div>
+        <div className="pp-links">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="pp-link" aria-hidden="true" />
+          ))}
+        </div>
+        <span className="sr-only">Loading profile…</span>
       </div>
-      <div className="pp-links">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="pp-link" aria-hidden="true" />
-        ))}
-      </div>
-      <span className="sr-only">Loading profile…</span>
     </div>
   </div>
 )

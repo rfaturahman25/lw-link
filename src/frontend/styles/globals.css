@@ -159,6 +159,12 @@
     padding-block: 32px 40px;
   }
 
+  /* Container card around the whole profile. Mobile stays edge-to-edge (no
+     visual shell); the desktop container query turns it into a panel. */
+  .pp-shell {
+    width: 100%;
+  }
+
   .pp-card {
     background-color: var(--pp-card, #ffffff);
     border: 1px solid var(--pp-border, rgba(15, 23, 42, 0.08));
@@ -450,8 +456,23 @@
 
   /* ---- Desktop composition: roomier whitespace, shorter rows ---------- */
   @container pp (min-width: 520px) {
+    /* The profile sits inside a translucent container card, matching the
+       mobile preview's framed look instead of floating on a bare page. */
+    .pp-shell {
+      max-width: calc(var(--pp-content-width, 460px) + 3rem);
+      margin-inline: auto;
+      margin-block: 2.5rem;
+      background-color: var(--pp-shell-bg, transparent);
+      border: 1px solid var(--pp-shell-border, transparent);
+      border-radius: var(--pp-shell-radius, 1.5rem);
+      box-shadow: var(--pp-shell-shadow, none);
+      -webkit-backdrop-filter: blur(var(--pp-card-blur, 10px));
+      backdrop-filter: blur(var(--pp-card-blur, 10px));
+      overflow: hidden;
+    }
+
     .pp-content {
-      padding-block: 56px 64px;
+      padding-block: 40px 44px;
       gap: calc(var(--pp-section-gap, 1.4rem) * 1.2);
     }
 

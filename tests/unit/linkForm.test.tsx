@@ -18,8 +18,22 @@ describe('linkFormModel', () => {
     expect(validateLinkForm({ ...emptyLinkForm(), title: 'x', url: 'https://a.com' })).toEqual({})
   })
 
-  it('defaults new links to centred text', () => {
+  it('defaults new links to centred, non-bold text', () => {
     expect(emptyLinkForm().align).toBe('center')
+    expect(emptyLinkForm().bold).toBe(false)
+  })
+
+  it('maps the bold flag from a stored link', () => {
+    expect(
+      linkFormFromLink({
+        id: '1',
+        title: 'T',
+        url: 'https://example.com',
+        icon: null,
+        sectionId: null,
+        bold: true,
+      }).bold
+    ).toBe(true)
   })
 
   it('maps a location link, including the hidden-location flag', () => {

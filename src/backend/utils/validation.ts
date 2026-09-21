@@ -159,6 +159,7 @@ export const linkCreateSchema = z.object({
   // Whether to show the URL subtitle on the public profile.
   showUrl: z.boolean().optional(),
   align: z.enum(['left', 'center', 'right']).optional(),
+  bold: z.boolean().optional(),
 })
 
 export const linkUpdateSchema = z.object({
@@ -171,6 +172,7 @@ export const linkUpdateSchema = z.object({
   showLocation: z.boolean().optional(),
   showUrl: z.boolean().optional(),
   align: z.enum(['left', 'center', 'right']).optional(),
+  bold: z.boolean().optional(),
 })
 
 export const reorderSchema = z.object({
